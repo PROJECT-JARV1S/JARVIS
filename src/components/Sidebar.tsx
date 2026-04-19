@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import JarvisIcon from '@/assets/jarvislogofinal.svg';
 import { 
   Settings, 
   ChevronFirst, 
@@ -28,26 +29,35 @@ export const Sidebar = ({ onSettingsClick }: SidebarProps) => {
         data-tauri-drag-region 
         className="h-14 flex items-center border-b border-surface-3/50 relative px-2"
       >
-        <div className="w-12 shrink-0 flex items-center justify-center pointer-events-none">
-          <div className="flex items-center justify-center w-8 h-8 rounded border border-jarvis-blue/50 bg-jarvis-blue/10 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
-            <span className="font-mono font-bold text-jarvis-blue text-lg leading-none">J</span>
-          </div>
-        </div>
         
         <AnimatePresence mode="wait">
           {isOpen && (
-            <motion.span 
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10, transition: { duration: 0.1 } }}
-              className="font-mono text-primary-txt font-bold tracking-widest text-sm whitespace-nowrap pointer-events-none"
-            >
-              CORE_V1
-            </motion.span>
-          )}
-        </AnimatePresence>
+          <motion.div 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10, transition: { duration: 0.1 } }}
+            className="flex items-center gap-3 pointer-events-none"
+          >
+            {/* THE SVG LOGO */}
+            <img 
+              src={JarvisIcon}
+              alt="Jarvis Logo" 
+              className="ml-2 w-10 h-10 object-contain" 
+            />
 
-        <button 
+            <motion.span 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="font-mono text-primary-txt font-bold tracking-[0.2em] text-sm whitespace-nowrap"
+            >
+              JARVIS
+            </motion.span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <button 
           onClick={() => setIsOpen(!isOpen)}
           className={`flex items-center justify-center text-secondary-txt hover:text-jarvis-blue transition-all z-50
             ${isOpen 
@@ -125,7 +135,6 @@ export const Sidebar = ({ onSettingsClick }: SidebarProps) => {
       </div>
 
       {/* FOOTER */}
-      {/* THE FIX 2: Changed bg-surface-1 to bg-transparent so the glass continues to the bottom */}
       <div className="h-12 flex items-center border-t border-white/5 bg-transparent px-2">
         <div className="w-12 shrink-0 flex items-center justify-center">
           <div className="w-2 h-2 rounded-full bg-success-green shadow-[0_0_8px_#00FF66] animate-pulse"></div>

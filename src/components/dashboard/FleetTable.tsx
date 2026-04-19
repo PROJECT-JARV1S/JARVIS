@@ -31,7 +31,6 @@ export const FleetTable = ({ devices }: FleetTableProps) => {
                 <td className="py-4 px-4 align-middle">
                   <div className="flex flex-col gap-1 w-24 mx-auto">
                     <div className="flex justify-between text-[10px] font-mono">
-                      {/* BRIGHTENED: Using primary-txt/60 for labels */}
                       <span className="text-primary-txt/60 font-bold uppercase">CPU</span>
                       <span className={device.cpu > 80 ? "text-error-red" : "text-primary-txt"}>{device.cpu}%</span>
                     </div>
@@ -60,7 +59,7 @@ export const FleetTable = ({ devices }: FleetTableProps) => {
                 </td>
 
                 <td className="py-4 text-center text-primary-txt/80">{device.storage}%</td>
-                <td className="py-4 text-right text-jarvis-blue font-bold">{device.network}</td>
+                <td className="py-4 text-right text-jarvis-blue font-bold pr-3">{device.network}</td>
               </tr>
             ))}
           </tbody>

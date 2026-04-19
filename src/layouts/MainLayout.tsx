@@ -12,7 +12,6 @@ export const MainLayout = () => {
   return (
     <div className="flex h-screen w-screen bg-base text-primary-txt font-sans overflow-hidden relative">
       
-      {/* --- THE BULLETPROOF MOVING BACKGROUND --- */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <motion.div 
           animate={{ x: [0, 60, 0], y: [0, 40, 0] }}

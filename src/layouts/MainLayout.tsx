@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Titlebar } from '@/components/Titlebar';
-import { Sidebar } from '@/components/Sidebar'; 
+import { Titlebar } from '@/components/navigation/Titlebar';
+import { Sidebar } from '@/components/navigation/Sidebar'; 
 import { Outlet } from 'react-router-dom'; 
 import { SettingsModal } from '@/components/modals/SettingsModal';
+import { MCPTerminal } from '@/features/mcp/components/MCPTerminal'; 
 
 export const MainLayout = () => {
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
@@ -11,33 +12,23 @@ export const MainLayout = () => {
   return (
     <div className="flex h-screen w-screen bg-base text-primary-txt font-sans overflow-hidden relative">
       
-      {/* --- THE BULLETPROOF MOVING BACKGROUND --- */}
+      {/* --- BACKGROUND LAYER --- */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        
-        {/* Orb 1: Jarvis Blue */}
         <motion.div 
           animate={{ x: [0, 60, 0], y: [0, 40, 0] }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          // THE FIX: Separated background color and opacity
           className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-jarvis-blue opacity-20 blur-[100px]" 
         />
-
-        {/* Orb 2: Success Green */}
         <motion.div 
           animate={{ x: [0, -50, 0], y: [0, -70, 0] }}
           transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-          // THE FIX: Separated background color and opacity
           className="absolute bottom-[-10%] right-[-5%] w-[45vw] h-[45vw] rounded-full bg-success-green opacity-10 blur-[100px]" 
         />
-
-        {/* Orb 3: Standard Tailwind Blue (Guaranteed to work as a fallback check) */}
         <motion.div 
           animate={{ opacity: [0.1, 0.2, 0.1], scale: [1, 1.1, 1] }}
           transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
           className="absolute top-[20%] left-[20%] w-[35vw] h-[35vw] rounded-full bg-blue-600 opacity-10 blur-[120px]" 
         />
-
-        {/* The Moving Tech Grid Overlay */}
         <motion.div 
           animate={{ y: [0, -32] }}
           transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
@@ -45,14 +36,14 @@ export const MainLayout = () => {
         />
       </div>
 
-      {/* --- UI LAYER --- */}
-      <div className="z-20 h-full flex shrink-0">
+      {/* --- SIDEBAR LAYER --- */}
+      <aside className="z-30 relative h-full overflow-visible shrink-0">
         <Sidebar onSettingsClick={() => setIsSettingsOpen(true)} />
-      </div>
+      </aside>
       
-      <div className="flex flex-col flex-1 overflow-hidden z-10 relative">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden z-10 relative">
         <Titlebar />
-        <main className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-6 custom-scrollbar min-h-0">
           <div className="max-w-[1600px] mx-auto h-full">
             <Outlet />
           </div>
@@ -63,6 +54,7 @@ export const MainLayout = () => {
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)} 
       />
+      <MCPTerminal />
 
     </div>
   );

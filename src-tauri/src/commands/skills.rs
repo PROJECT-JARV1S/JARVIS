@@ -10,23 +10,16 @@
 //!
 //! TODO: Implement once jarvis-skills module is finalized.
 
-use serde::Serialize;
-
-#[derive(Serialize)]
-pub struct SkillResult {
-    pub skill_name: String,
-    pub success: bool,
-    pub message: String,
-}
+use crate::domain::errors::AppError;
 
 /// Placeholder: query device info from jarvis-skills MCP.
 #[tauri::command]
-pub async fn get_device_info() -> Result<String, String> {
-    Err("jarvis-skills module not yet available".into())
+pub async fn get_device_info() -> Result<String, AppError> {
+    crate::handlers::skills::get_device_info()
 }
 
 /// Placeholder: list available skills from the MCP server.
 #[tauri::command]
-pub async fn list_skills() -> Result<Vec<String>, String> {
-    Err("jarvis-skills module not yet available".into())
+pub async fn list_skills() -> Result<Vec<String>, AppError> {
+    crate::handlers::skills::list_skills()
 }

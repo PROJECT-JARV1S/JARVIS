@@ -1,37 +1,18 @@
-use pyo3::prelude::*;
-use pyo3::types::PyList;
-use serde::Serialize;
-use std::sync::Mutex;
+use crate::domain::chat::{ChatResponse, ChatState};
+use crate::domain::errors::AppError;
+use crate::handlers::chat::{get_providers, send_prompt, set_provider};
 use tauri::State;
-
-/// Managed state for the chat subsystem.
-#[derive(Default)]
-pub struct ChatState {
-    /// Currently selected LLM provider name.
-    pub active_provider: Mutex<String>,
-}
-
-#[derive(Serialize)]
-pub struct ChatResponse {
-    pub message: String,
-    pub provider: String,
-}
 
 /// Send a prompt to jarvis-chat via PyO3.
 #[tauri::command]
-pub async fn prompt(input: String, state: State<'_, ChatState>) -> Result<ChatResponse, String> {
+pub async fn prompt(input: String, state: State<'_, ChatState>) -> Result<ChatResponse, AppError> {
     let provider = state
         .active_provider
         .lock()
-        .map_err(|e| e.to_string())?
+        .map_err(|e| AppError::LockError(e.to_string()))?
         .clone();
 
-    let response = Python::attach(|py| -> PyResult<String> {
-        let bridge = PyModule::import(py, "chat_bridge")?;
-        let result = bridge.call_method1("send_prompt", (&input, &provider))?;
-        result.extract::<String>()
-    })
-    .map_err(|e| format!("Python error: {e}"))?;
+    let response = send_prompt(&input, &provider)?;
 
     Ok(ChatResponse {
         message: response,
@@ -41,17 +22,8 @@ pub async fn prompt(input: String, state: State<'_, ChatState>) -> Result<ChatRe
 
 /// Get available LLM providers from jarvis-chat.
 #[tauri::command]
-pub async fn get_chat_providers() -> Result<Vec<String>, String> {
-    Python::attach(|py| -> PyResult<Vec<String>> {
-        let bridge = PyModule::import(py, "chat_bridge")?;
-        let result = bridge.call_method0("get_available_providers")?;
-        let py_list: &Bound<'_, PyList> = result.cast()?;
-        py_list
-            .iter()
-            .map(|item: Bound<'_, pyo3::PyAny>| item.extract::<String>())
-            .collect()
-    })
-    .map_err(|e| format!("Python error: {e}"))
+pub async fn get_chat_providers() -> Result<Vec<String>, AppError> {
+    get_providers()
 }
 
 /// Set the active LLM provider.
@@ -59,8 +31,6 @@ pub async fn get_chat_providers() -> Result<Vec<String>, String> {
 pub async fn set_chat_provider(
     provider: String,
     state: State<'_, ChatState>,
-) -> Result<(), String> {
-    let mut active = state.active_provider.lock().map_err(|e| e.to_string())?;
-    *active = provider;
-    Ok(())
+) -> Result<(), AppError> {
+    set_provider(&state, provider)
 }

@@ -1,4 +1,6 @@
 pub mod commands;
+pub mod domain;
+pub mod handlers;
 
 use tauri::Manager;
 
@@ -8,14 +10,14 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(commands::chat::ChatState::default())
+        .manage(domain::chat::ChatState::default())
         .setup(|app| {
             // Initialize Python interpreter for jarvis-chat
             pyo3::Python::initialize();
 
             // Initialise the voice transcription worker (pure Rust, no Python)
             let voice_state =
-                commands::voice::VoiceState::new().expect("failed to initialise voice subsystem");
+                handlers::voice::init_voice_state().expect("failed to initialise voice subsystem");
             app.manage(voice_state);
 
             Ok(())

@@ -4,63 +4,70 @@ import { ChevronLeft, Send, X, Mic, Terminal } from 'lucide-react';
 import { MCPMessageLog, Message } from './MCPMessageLog'; 
 import { useVoice } from '@/context/VoiceContext'; 
 import { NeuralCore } from '@/features/mcp/components/NeuralCore';
+import { sendPrompt } from '@/services/chatService';
 
 export const MCPTerminal = () => {
-  const { status, transcript, startListening, stopListening } = useVoice(); 
+  const { status, transcript, startListening, stopListening, setStatus } = useVoice(); 
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [showHistory, setShowHistory] = useState(true);
+  const [isThinking, setIsThinking] = useState(false);
   
   // Use a ref to track if we've already sent the current transcript
   const lastProcessedTranscript = useRef('');
 
   // 🏛️ 1. AUTOMATIC SEND LOGIC
-  // When you stop talking and status hits IDLE, if there's text, send it.
+  // When the transcriber finishes (transcript arrives), if we're open, send it.
   useEffect(() => {
-    if (status === 'IDLE' && input.trim() !== '' && input !== lastProcessedTranscript.current) {
-      handleSend();
-      lastProcessedTranscript.current = input;
+    if (transcript && transcript !== lastProcessedTranscript.current) {
+      setInput(transcript);
+      lastProcessedTranscript.current = transcript;
+      handleSend(transcript);
     }
-  }, [status]);
+  }, [transcript]);
 
   // 🏛️ 2. VOICE ACTIVATION TRIGGER
   useEffect(() => {
     if (status === 'LISTENING') {
       setIsOpen(true);
-      lastProcessedTranscript.current = ''; // Reset for new session
     }
   }, [status]);
 
-  // 🏛️ 3. TRANSCRIPT SYNC
-  useEffect(() => {
-    if (status === 'LISTENING' && transcript) {
-      setInput(transcript);
-    }
-  }, [status, transcript]);
-
-  const handleSend = () => {
-    const textToSend = input.trim();
+  const handleSend = async (overrideText?: string) => {
+    const textToSend = (overrideText || input).trim();
     if (!textToSend) return;
     
     // Add User Message
     setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user', text: textToSend }]);
     
-    // RESET EVERYTHING
+    // RESET INPUT
     setInput('');
     setShowHistory(true);
+    setIsThinking(true);
+    setStatus('THINKING');
     
-    // CRITICAL: Ensure voice is stopped so the button turns back to Mic
-    if (status !== 'IDLE') stopListening();
+    // Ensure voice is stopped
+    if (status === 'LISTENING') stopListening();
 
-    // Simulate JARVIS Reply
-    setTimeout(() => {
+    try {
+      const response = await sendPrompt(textToSend);
+      
       setMessages(prev => [...prev, { 
         id: Date.now().toString(), 
         sender: 'jarvis', 
-        text: "Neural command accepted. Executing logic..." 
+        text: response.message 
       }]);
-    }, 800);
+    } catch (err) {
+      setMessages(prev => [...prev, { 
+        id: Date.now().toString(), 
+        sender: 'jarvis', 
+        text: `Error: ${err}` 
+      }]);
+    } finally {
+      setIsThinking(false);
+      setStatus('IDLE');
+    }
   };
 
   return (
@@ -99,7 +106,9 @@ export const MCPTerminal = () => {
                 className="w-full flex flex-col items-center pointer-events-auto"
               >
                 <div className={`w-full transition-all duration-500 bg-surface-1/80 backdrop-blur-3xl border rounded-full p-2 flex items-center
-                  ${status === 'LISTENING' ? 'border-jarvis-blue shadow-[0_0_30px_rgba(0,240,255,0.2)]' : 'border-white/10'}
+                  ${status === 'LISTENING' ? 'border-jarvis-blue shadow-[0_0_30px_rgba(0,240,255,0.2)]' : 
+                    status === 'THINKING' ? 'border-success-green animate-pulse shadow-[0_0_20px_rgba(0,255,102,0.1)]' :
+                    'border-white/10'}
                 `}>
                   
                   {/* MINIMIZE */}
@@ -107,15 +116,20 @@ export const MCPTerminal = () => {
                     <ChevronLeft size={20} />
                   </button>
 
-                  <span className="text-jarvis-blue font-mono font-bold mx-3">{'>'}</span>
+                  <span className={`${status === 'THINKING' ? 'text-success-green' : 'text-jarvis-blue'} font-mono font-bold mx-3`}>{'>'}</span>
                   
                   <input
                     autoFocus
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder={status === 'LISTENING' ? "Listening..." : "Initialize command..."}
-                    className="flex-1 bg-transparent border-none focus:outline-none text-primary-txt font-mono text-sm placeholder:text-primary-txt/20"
+                    placeholder={
+                      status === 'LISTENING' ? "Listening..." : 
+                      status === 'THINKING' ? "JARVIS is thinking..." : 
+                      "Initialize command..."
+                    }
+                    disabled={status === 'THINKING'}
+                    className="flex-1 bg-transparent border-none focus:outline-none text-primary-txt font-mono text-sm placeholder:text-primary-txt/20 disabled:opacity-50"
                   />
 
                   {/* VOICE TOGGLE & SEND */}

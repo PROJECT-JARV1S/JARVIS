@@ -1,5 +1,5 @@
-// src/context/VoiceContext.tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import * as voiceService from '@/services/voiceService';
 
 type JarvisStatus = 'IDLE' | 'WAKING' | 'LISTENING' | 'THINKING' | 'SPEAKING';
 
@@ -8,6 +8,7 @@ interface VoiceContextType {
   transcript: string;
   startListening: () => void;
   stopListening: () => void;
+  setStatus: (status: JarvisStatus) => void;
 }
 
 const VoiceContext = createContext<VoiceContextType | undefined>(undefined);
@@ -16,28 +17,56 @@ export const VoiceProvider = ({ children }: { children: React.ReactNode }) => {
   const [status, setStatus] = useState<JarvisStatus>('IDLE');
   const [transcript, setTranscript] = useState('');
 
-  // Simulated Porcupine Wake Word Detection
+  // Sync status on mount
   useEffect(() => {
-    console.log("Porcupine Engine: Initialized. Awaiting 'Hey Jarvis'...");
+    const sync = async () => {
+      try {
+        const active = await voiceService.getVoiceStatus();
+        if (active) setStatus('LISTENING');
+      } catch (err) {
+        console.error("Voice sync error:", err);
+      }
+    };
+    sync();
   }, []);
 
-  const startListening = () => {
+  // Listen for real transcripts from Tauri
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    
+    const setup = async () => {
+      unlisten = await voiceService.onTranscriptReceived((text) => {
+        setTranscript(text);
+        setStatus('IDLE'); // Backend usually stops after emitting
+      });
+    };
+
+    setup();
+    return () => { if (unlisten) unlisten(); };
+  }, []);
+
+  const startListening = useCallback(async () => {
     setStatus('LISTENING');
-    // Mocking a successful transcription after 3 seconds
-    setTimeout(() => {
-      setTranscript("Jarvis, check system thermals.");
-      setStatus('THINKING');
-      
-      // Simulate MCP Backend Delay
-      setTimeout(() => {
-        setStatus('SPEAKING');
-        setTimeout(() => setStatus('IDLE'), 2000);
-      }, 1500);
-    }, 3000);
-  };
+    setTranscript('');
+    try {
+      await voiceService.startVoiceListener();
+    } catch (err) {
+      console.error("Failed to start voice:", err);
+      setStatus('IDLE');
+    }
+  }, []);
+
+  const stopListening = useCallback(async () => {
+    try {
+      await voiceService.stopVoiceListener();
+      setStatus('IDLE');
+    } catch (err) {
+      console.error("Failed to stop voice:", err);
+    }
+  }, []);
 
   return (
-    <VoiceContext.Provider value={{ status, transcript, startListening, stopListening: () => setStatus('IDLE') }}>
+    <VoiceContext.Provider value={{ status, transcript, startListening, stopListening, setStatus }}>
       {children}
     </VoiceContext.Provider>
   );

@@ -7,9 +7,9 @@ import {
 
 export const useSystemData = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, _setError] = useState<string | null>(null);
   
-  const [stats, setStats] = useState(MOCK_SYSTEM_STATS);
+  const [stats] = useState(MOCK_SYSTEM_STATS);
   const [devices, setDevices] = useState(MOCK_DEVICES);
   const [tasks, setTasks] = useState(MOCK_TASKS);
   const [events, setEvents] = useState(MOCK_EVENTS);

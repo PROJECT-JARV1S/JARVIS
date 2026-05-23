@@ -50,14 +50,6 @@ export const NeuralCore = () => {
         <div className="w-4 h-4 bg-base rounded-full border border-white/20 animate-pulse" />
       </motion.div>
 
-      {/* Mode Indicator Text */}
-      <div className="absolute -bottom-6 flex flex-col items-center">
-        <span className={`text-[8px] font-mono tracking-[0.3em] uppercase ${
-          isOffline ? 'text-offline-core/80' : 'text-jarvis-blue'
-        }`}>
-          {status}
-        </span>
-      </div>
     </div>
   );
 };

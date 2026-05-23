@@ -1,58 +1,53 @@
-import { motion } from 'framer-motion';
-import { Cpu } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const MCPLoading = () => {
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex gap-6 flex-row px-4 py-4"
-    >
-      {/* JARVIS AVATAR with Pulse */}
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-offline-core/30 bg-offline-core/10 text-offline-core relative">
-        <Cpu size={20} className="animate-pulse" />
-        <motion.div 
-          animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="absolute inset-0 rounded-xl bg-offline-core"
-        />
-      </div>
+  const text = "PROCESSING_COMMAND...";
+  const [displayedText, setDisplayedText] = useState("");
+  const [index, setIndex] = useState(0);
 
-      {/* THINKING ANIMATION */}
-      <div className="flex flex-col gap-2">
-        <span className="text-[10px] font-mono uppercase tracking-[0.2em] opacity-30 animate-pulse">
-          Jarvis_Processing...
-        </span>
-        
-        <div className="flex items-center gap-1.5 h-6">
-          {/* Three "Neural" Nodes */}
-          {[0, 1, 2].map((i) => (
-            <motion.div
-              key={i}
-              animate={{ 
-                backgroundColor: ["rgba(244, 244, 245, 0.2)", "rgba(244, 244, 245, 1)", "rgba(244, 244, 245, 0.2)"],
-                boxShadow: ["0 0 0px rgba(244, 244, 245, 0)", "0 0 8px rgba(244, 244, 245, 0.6)", "0 0 0px rgba(244, 244, 245, 0)"]
-              }}
+  useEffect(() => {
+    if (index >= text.length) return;
+
+    let delay = 45; 
+    const char = text[index];
+    const isSpecialChar = char === '_' || char === ' ' || char === '.';
+
+    if (isSpecialChar) {
+      delay = 140;
+    } else {
+      delay = 40 + Math.floor(Math.random() * 25);
+    }
+
+    const timeout = setTimeout(() => {
+      setDisplayedText((prev) => prev + text[index]);
+      setIndex((prev) => prev + 1);
+    }, delay);
+
+    return () => clearTimeout(timeout);
+  }, [index, text]);
+
+  return (
+    <div className="flex px-4 py-4 items-center">
+      <div className="relative inline-block font-mono">
+        <h2 className="text-offline-core text-xs tracking-[0.25em] uppercase flex items-center">
+          {/* The typed content */}
+          <span className="opacity-80 font-bold">{displayedText}</span>
+          
+          {/* The Block Cursor */}
+          <AnimatePresence>
+            <motion.span
+              initial={{ opacity: 1 }}
+              animate={{ opacity: [1, 0, 1] }}
               transition={{ 
                 repeat: Infinity, 
-                duration: 1, 
-                delay: i * 0.2, 
-                ease: "easeInOut" 
+                duration: 0.6,
               }}
-              className="w-1.5 h-1.5 rounded-full"
+              className="inline-block w-[6px] h-[12px] bg-offline-core ml-2 translate-y-[0px] shadow-[0_0_8px_var(--color-offline-core)]"
             />
-          ))}
-          
-          {/* Floating Data Packet */}
-          <div className="ml-4 w-24 h-[1px] bg-offline-core/20 relative overflow-hidden">
-            <motion.div 
-              animate={{ x: [-100, 100] }}
-              transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-              className="absolute inset-0 w-8 bg-gradient-to-r from-transparent via-offline-core to-transparent"
-            />
-          </div>
-        </div>
+          </AnimatePresence>
+        </h2>
       </div>
-    </motion.div>
+    </div>
   );
 };

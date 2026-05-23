@@ -9,6 +9,7 @@ import {
   AppConfig, DEFAULT_CONFIG, PROVIDER_MODEL_SUGGESTIONS, PROVIDER_BASE_URLS,
   getConfig, saveConfig, resetConfig
 } from '@/services/configService';
+import { useTheme } from '@/context/ThemeContext';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -108,11 +109,11 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             className={`relative w-full max-w-4xl h-[600px] border rounded-xl overflow-hidden shadow-2xl flex flex-col
-              ${isOffline ? 'border-offline-border bg-offline-bg' : 'border-jarvis-blue/30 bg-base'}
+              ${isOffline ? 'border-offline-border bg-offline-bg' : 'border-theme-border bg-theme-bg'}
             `}
             style={{
-              '--theme-accent': isOffline ? 'var(--color-offline-core)' : 'var(--color-jarvis-blue)',
-              '--theme-accent-rgb': isOffline ? 'var(--color-offline-core-rgb)' : '0, 240, 255'
+              '--theme-accent': isOffline ? 'var(--color-offline-core)' : 'var(--theme-accent)',
+              '--theme-accent-rgb': isOffline ? 'var(--color-offline-core-rgb)' : 'var(--theme-accent-rgb)'
             } as React.CSSProperties}
           >
             {/* Header */}
@@ -258,15 +259,36 @@ interface TabProps {
 // ─── General Tab ────────────────────────────────────────────────────────────
 
 const GeneralTab = ({ config, updateConfig, accent }: TabProps) => {
+  const { theme, setTheme } = useTheme();
   const [showApiKey, setShowApiKey] = useState(false);
   const [showModelSuggestions, setShowModelSuggestions] = useState(false);
 
   const isLocalUrl = config.chat_base_url.includes('127.0.0.1') || config.chat_base_url.includes('localhost');
   const modelSuggestions = PROVIDER_MODEL_SUGGESTIONS[config.provider] || [];
+  const isOffline = (sessionStorage.getItem('jarvis_mode') || 'online') === 'offline';
 
   return (
     <div className="space-y-7">
       <SectionHeader title="Model_Configuration" subtitle="Active LLM neural endpoint selection" />
+
+      {/* Theme selection dropdown for online mode */}
+      {!isOffline && (
+        <FieldGroup label="Visual Interface Theme" description="Switch the color protocol for online mode elements.">
+          <div className="relative">
+            <select
+              id="settings-theme"
+              value={theme}
+              onChange={(e) => setTheme(e.target.value as any)}
+              className="w-full bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 rounded-lg px-4 py-3 text-sm font-sans text-primary-txt focus:outline-none focus:border-[var(--theme-accent)]/50 focus:ring-1 focus:ring-[var(--theme-accent)]/30 transition-all duration-300 appearance-none cursor-pointer"
+            >
+              <option value="jarvis" className="bg-[#121214] text-white">Default Protocol (Jarvis Blue)</option>
+              <option value="cyberpunk" className="bg-[#121214] text-white">Cyberpunk Protocol (Neon Pink/Purple)</option>
+              <option value="amber" className="bg-[#121214] text-white">Amber Protocol (Tactical Orange)</option>
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-txt pointer-events-none" />
+          </div>
+        </FieldGroup>
+      )}
 
       {/* Provider Dropdown */}
       <FieldGroup label="Active Provider" description="Primary LLM service endpoint">
@@ -285,9 +307,9 @@ const GeneralTab = ({ config, updateConfig, accent }: TabProps) => {
             }}
             className="w-full bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 rounded-lg px-4 py-3 text-sm font-sans text-primary-txt focus:outline-none focus:border-[var(--theme-accent)]/50 focus:ring-1 focus:ring-[var(--theme-accent)]/30 transition-all duration-300 appearance-none cursor-pointer"
           >
-            <option value="openai">OpenAI</option>
-            <option value="gemini">Gemini</option>
-            <option value="anthropic">Anthropic</option>
+            <option value="openai" className="bg-[#121214] text-white">OpenAI</option>
+            <option value="gemini" className="bg-[#121214] text-white">Gemini</option>
+            <option value="anthropic" className="bg-[#121214] text-white">Anthropic</option>
           </select>
           <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-txt pointer-events-none" />
         </div>

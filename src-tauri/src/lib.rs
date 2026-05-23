@@ -7,8 +7,7 @@ use crate::commands::chat::*;
 use crate::commands::config::*;
 use crate::commands::skills::*;
 use crate::commands::voice::*;
-use tauri::{App, Manager};
-use crate::domain::errors::AppError;
+use tauri::Manager;
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -16,7 +15,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(domain::chat::ChatState::default())
-        .setup(|app: &mut App| {
+        .setup(|app| {
             // Load Configuration
             let config = if let Ok(config_dir) = app.path().app_config_dir() {
                 let config_path = config_dir.join("config.toml");
@@ -32,30 +31,18 @@ pub fn run() {
             app.manage(std::sync::Mutex::new(config));
 
             // Load Database
-            if let Ok(data_dir) = app.path().app_data_dir() {
-                let db_path = data_dir.join(&db_name);
-                let db = infrastructure::db::DatabaseManager::new(&db_path).map_err(|e| {
-                    AppError::SystemError(format!("Failed to initialize database {}", e))
-                });
-                app.manage(db);
-            }
+            let data_dir = app.path().app_data_dir()?;
+            let db_path = data_dir.join(&db_name);
+            let db = infrastructure::db::DatabaseManager::new(&db_path)?;
+            app.manage(db);
 
-            // Initialize the voice transcription worker in the background
-            let handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                match handlers::voice::init_voice_state(
-                    vad_threshold,
-                    silence_duration_ms,
-                    model_path,
-                ) {
-                    Ok(state) => {
-                        handle.manage(state);
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to initialize voice subsystem: {:?}", e);
-                    }
-                }
-            });
+            // Initialize the voice transcription worker
+            let voice_state = handlers::voice::init_voice_state(
+                vad_threshold,
+                silence_duration_ms,
+                model_path,
+            )?;
+            app.manage(voice_state);
 
             Ok(())
         })

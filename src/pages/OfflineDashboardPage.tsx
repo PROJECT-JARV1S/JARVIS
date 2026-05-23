@@ -30,12 +30,12 @@ export const OfflineDashboardPage = () => {
     initSession();
   }, []);
 
-  const handleSend = async () => {
-    if (!input.trim() || isThinking) return;
+  const handleSend = async (overrideText?: string) => {
+    const textToSend = (overrideText || input).trim();
+    if (!textToSend || isThinking) return;
 
-    const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: input };
+    const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: textToSend };
     setMessages(prev => [...prev, userMsg]);
-    const currentInput = input;
     setInput("");
 
     setIsThinking(true);
@@ -50,7 +50,7 @@ export const OfflineDashboardPage = () => {
         setSessionId(sid);
       }
 
-      const response = await sendPrompt(sid, currentInput);
+      const response = await sendPrompt(sid, textToSend);
       responseText = response.message;
     } catch (err) {
       console.error("[OfflineDashboard] Backend prompt failed:", err);

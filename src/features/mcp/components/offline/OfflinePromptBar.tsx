@@ -5,34 +5,32 @@ import { useVoice } from '@/context/VoiceContext';
 interface Props {
   input: string;
   setInput: (val: string) => void;
-  onSend: () => void;
+  onSend: (overrideText?: string) => void;
   disabled?: boolean;
 }
 
 export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) => {
   const { status, transcript, startListening, stopListening } = useVoice();
   const lastProcessedTranscript = useRef('');
-  const isVoiceInput = useRef(false);
+  const wasListening = useRef(false);
 
   useEffect(() => {
-    if (status === 'LISTENING' && transcript) {
-      setInput(transcript);
-      isVoiceInput.current = true;
-    }
-  }, [status, transcript, setInput]);
-
-  // 🧠 Logic: Auto-send when speaking finishes
-  useEffect(() => {
-    if (status === 'IDLE' && input.trim() !== '' && isVoiceInput.current && input !== lastProcessedTranscript.current) {
-      onSend();
-      lastProcessedTranscript.current = input;
-      isVoiceInput.current = false;
-    }
-    // Reset the ref when a new listening session starts
     if (status === 'LISTENING') {
-      lastProcessedTranscript.current = '';
+      wasListening.current = true;
     }
-  }, [status, input, onSend]);
+  }, [status]);
+
+  useEffect(() => {
+    if (transcript && transcript !== lastProcessedTranscript.current) {
+      setInput(transcript);
+      lastProcessedTranscript.current = transcript;
+      
+      if (wasListening.current) {
+        onSend(transcript);
+        wasListening.current = false;
+      }
+    }
+  }, [transcript, setInput, onSend]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -57,7 +55,6 @@ export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) =
             value={input}
             readOnly={disabled} 
             onChange={(e) => {
-              isVoiceInput.current = false;
               setInput(e.target.value);
             }}
             onKeyDown={handleKeyDown}
@@ -97,7 +94,7 @@ export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) =
  
             {/* Manual Send / Loading Indicator */}
             <button 
-              onClick={onSend}
+              onClick={() => onSend()}
               disabled={disabled || !input.trim()}
               title="Execute Command"
               className="p-3 rounded-xl bg-offline-core text-offline-bg hover:scale-105 active:scale-95 transition-all disabled:opacity-20 disabled:grayscale disabled:hover:scale-100 shadow-[0_0_20px_rgba(var(--color-offline-core-rgb),0.3)]"

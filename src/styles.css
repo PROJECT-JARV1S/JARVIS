@@ -26,6 +26,14 @@
     --color-offline-surface-dark: #16171a;
     --color-offline-border: rgba(244, 244, 245, 0.12);
     
+    /* --- MAPPED THEMES FOR DYNAMIC STYLES --- */
+    --color-theme-accent: var(--theme-accent);
+    --color-theme-bg: var(--theme-bg-base);
+    --color-theme-surface-1: var(--theme-surface-1);
+    --color-theme-surface-2: var(--theme-surface-2);
+    --color-theme-border: var(--theme-border);
+    --color-theme-border-hover: var(--theme-border-hover);
+
     /* 4. Typography Discipline */
     --font-sans: "Inter", sans-serif;
     --font-mono: "JetBrains Mono", monospace;
@@ -40,6 +48,50 @@
         from { transform: translateY(0); }
         to { transform: translateY(100vh); }
     }
+}
+
+:root {
+    --theme-accent: #00F0FF;
+    --theme-accent-rgb: 0, 240, 255;
+    --theme-bg-base: #121212;
+    --theme-surface-1: #1E1E1E;
+    --theme-surface-2: #2A2A2A;
+    --theme-border: rgba(255, 255, 255, 0.05);
+    --theme-border-hover: rgba(0, 240, 255, 0.2);
+    --theme-grid-color: rgba(0, 240, 255, 0.015);
+}
+
+.theme-jarvis {
+    --theme-accent: #00F0FF;
+    --theme-accent-rgb: 0, 240, 255;
+    --theme-bg-base: #121212;
+    --theme-surface-1: #1E1E1E;
+    --theme-surface-2: #2A2A2A;
+    --theme-border: rgba(255, 255, 255, 0.05);
+    --theme-border-hover: rgba(0, 240, 255, 0.2);
+    --theme-grid-color: rgba(0, 240, 255, 0.015);
+}
+
+.theme-cyberpunk {
+    --theme-accent: #ff007f;
+    --theme-accent-rgb: 255, 0, 127;
+    --theme-bg-base: #0f051d;
+    --theme-surface-1: rgba(35, 15, 60, 0.4);
+    --theme-surface-2: rgba(50, 20, 85, 0.6);
+    --theme-border: rgba(255, 0, 127, 0.15);
+    --theme-border-hover: rgba(255, 0, 127, 0.35);
+    --theme-grid-color: rgba(255, 0, 127, 0.025);
+}
+
+.theme-amber {
+    --theme-accent: #ffaa00;
+    --theme-accent-rgb: 255, 170, 0;
+    --theme-bg-base: #110d05;
+    --theme-surface-1: rgba(40, 30, 10, 0.4);
+    --theme-surface-2: rgba(60, 42, 15, 0.6);
+    --theme-border: rgba(255, 170, 0, 0.15);
+    --theme-border-hover: rgba(255, 170, 0, 0.35);
+    --theme-grid-color: rgba(255, 170, 0, 0.02);
 }
 
 /* Apply the base foundation to the whole app */

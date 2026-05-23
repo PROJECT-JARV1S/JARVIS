@@ -1,11 +1,9 @@
-import { Search, Activity, Mic, MicOff } from 'lucide-react';
+import { Search, Activity } from 'lucide-react';
 import { useState } from 'react';
 import { MOCK_SYSTEM_UTILITIES } from '@/lib/mockData';
 import { NeuralCore } from '@/features/mcp/components/NeuralCore';
-import { useVoice } from '@/hooks/useVoice';
 
 export const Titlebar = () => {
-  const { isListening, transcript, startListening, stopListening } = useVoice();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
 
@@ -35,12 +33,6 @@ export const Titlebar = () => {
             <Activity size={12} className="text-jarvis-blue animate-pulse" />
             <span className="text-[10px] font-mono text-jarvis-blue/80 uppercase tracking-tighter">Uplink_Established</span>
           </div>
-          
-          {transcript && (
-            <div className="text-[10px] font-mono text-success-green animate-in fade-in slide-in-from-left-2">
-              RESULT: "{transcript}"
-            </div>
-          )}
         </div>
       </div>
       

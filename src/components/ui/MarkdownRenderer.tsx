@@ -97,7 +97,7 @@ const parseInline = (text: string): Token[] => {
 
 // ─── Inline Content Renderer ───────────────────────────────────────────────
 
-const RenderInline = ({ text, themeColorClass }: { text: string; themeColorClass: string }) => {
+const RenderInline = ({ text, themeColorClass, theme: _theme }: { text: string; themeColorClass: string; theme?: 'online' | 'offline' }) => {
   const tokens = parseInline(text);
 
   return (
@@ -307,31 +307,31 @@ export const MarkdownRenderer = ({ content, theme = 'offline' }: MarkdownRendere
           case 'h1':
             return (
               <h1 key={idx} className="text-xl font-bold font-mono tracking-tight text-white mb-2 mt-4 first:mt-0">
-                <RenderInline text={block.content} themeColorClass={themeColorClass} />
+                <RenderInline text={block.content} themeColorClass={themeColorClass} theme={theme} />
               </h1>
             );
           case 'h2':
             return (
               <h2 key={idx} className="text-lg font-bold font-mono tracking-tight text-white mb-2 mt-3 first:mt-0">
-                <RenderInline text={block.content} themeColorClass={themeColorClass} />
+                <RenderInline text={block.content} themeColorClass={themeColorClass} theme={theme} />
               </h2>
             );
           case 'h3':
             return (
               <h3 key={idx} className="text-md font-bold font-mono tracking-tight text-white mb-1 mt-2.5 first:mt-0">
-                <RenderInline text={block.content} themeColorClass={themeColorClass} />
+                <RenderInline text={block.content} themeColorClass={themeColorClass} theme={theme} />
               </h3>
             );
           case 'h4':
             return (
               <h4 key={idx} className="text-sm font-semibold font-mono tracking-tight text-white mb-1 mt-2 first:mt-0">
-                <RenderInline text={block.content} themeColorClass={themeColorClass} />
+                <RenderInline text={block.content} themeColorClass={themeColorClass} theme={theme} />
               </h4>
             );
           case 'blockquote':
             return (
               <blockquote key={idx} className="border-l-4 border-white/20 pl-3.5 italic text-secondary-txt/80 my-2 leading-relaxed">
-                <RenderInline text={block.content} themeColorClass={themeColorClass} />
+                <RenderInline text={block.content} themeColorClass={themeColorClass} theme={theme} />
               </blockquote>
             );
           case 'ul':
@@ -339,7 +339,7 @@ export const MarkdownRenderer = ({ content, theme = 'offline' }: MarkdownRendere
               <ul key={idx} className="list-disc pl-5 my-2 space-y-1">
                 {block.items?.map((item, i) => (
                   <li key={i} className="leading-relaxed">
-                    <RenderInline text={item} themeColorClass={themeColorClass} />
+                    <RenderInline text={item} themeColorClass={themeColorClass} theme={theme} />
                   </li>
                 ))}
               </ul>
@@ -349,7 +349,7 @@ export const MarkdownRenderer = ({ content, theme = 'offline' }: MarkdownRendere
               <ol key={idx} className="list-decimal pl-5 my-2 space-y-1">
                 {block.items?.map((item, i) => (
                   <li key={i} className="leading-relaxed">
-                    <RenderInline text={item} themeColorClass={themeColorClass} />
+                    <RenderInline text={item} themeColorClass={themeColorClass} theme={theme} />
                   </li>
                 ))}
               </ol>
@@ -369,7 +369,7 @@ export const MarkdownRenderer = ({ content, theme = 'offline' }: MarkdownRendere
           default:
             return (
               <p key={idx} className="leading-relaxed whitespace-pre-wrap">
-                <RenderInline text={block.content} themeColorClass={themeColorClass} />
+                <RenderInline text={block.content} themeColorClass={themeColorClass} theme={theme} />
               </p>
             );
         }

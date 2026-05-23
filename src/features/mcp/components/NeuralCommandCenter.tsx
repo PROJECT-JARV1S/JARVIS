@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Send, Mic, X, Cpu } from 'lucide-react';
 import { MCPMessageLog, Message } from './MCPMessageLog'; 
@@ -9,14 +9,11 @@ interface CommandCenterProps {
   mode: 'online' | 'offline';
 }
 
-export const NeuralCommandCenter = ({ mode }: CommandCenterProps) => {
+export const NeuralCommandCenter = ({ mode: _mode }: CommandCenterProps) => {
   const { status, transcript, startListening, stopListening } = useVoice();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-
-  const isOffline = mode === 'offline';
-  const accentColor = isOffline ? 'var(--color-offline-core)' : 'var(--color-jarvis-blue)';
 
   // Logic: Open terminal if voice triggers
   useEffect(() => {

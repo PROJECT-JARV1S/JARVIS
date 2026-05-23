@@ -29,9 +29,15 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-pyo3 = "0.28.3"
 tokio = { version = "1.51.0", features = ["full"] }
 anyhow = "1.0.102"
 crossbeam-channel = "0.5"
 jarvis-transcriber = { git = "https://github.com/PROJECT-JARV1S/jarvis-voice.git", version = "0.1.1" }
 thiserror = "2.0.18"
+agent_rs = { git = "https://github.com/skaarfundgandr/agent_rs.git", version = "0.1.0" }
+rusqlite = { version = "0.39.0", features = ["bundled"] }
+toml = "1.1.2"
+directories = "6.0.0"
+uuid = { version = "1.23.1", features = ["v4"] }
+chrono = "0.4.44"
+rig-core = "0.36.0"

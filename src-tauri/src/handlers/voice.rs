@@ -1,7 +1,5 @@
 use crate::domain::errors::AppError;
-use crate::domain::voice::{
-    TranscriptPayload, VoiceState, DEFAULT_MODEL_PATH, DEFAULT_MODEL_URI,
-};
+use crate::domain::voice::{TranscriptPayload, VoiceState, DEFAULT_MODEL_URI};
 use crossbeam_channel::unbounded;
 use jarvis_transcriber::core::config::Config;
 use jarvis_transcriber::transcription::engine::{worker_thread, Command};
@@ -10,14 +8,21 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use tauri::{AppHandle, Emitter};
 
-pub fn init_voice_state() -> Result<VoiceState, AppError> {
+pub fn init_voice_state(
+    vad_threshold: f32,
+    silence_duration_ms: u64,
+    model_path: String,
+) -> Result<VoiceState, AppError> {
     let (command_tx, command_rx) = unbounded();
     let is_transcribing = Arc::new(AtomicBool::new(false));
     let latest_transcript = Arc::new(Mutex::new(String::new()));
     let completion_notifier = Arc::new((Mutex::new(false), Condvar::new()));
     let on_complete_callback = Arc::new(Mutex::new(None)); // unused – we poll instead
 
-    let config = Config::default();
+    let config = Config {
+        silence_threshold_rms: vad_threshold,
+        silence_duration: (silence_duration_ms as f32) / 1000.0,
+    };
 
     // Clones for the worker thread
     let is_tx_clone = is_transcribing.clone();
@@ -34,7 +39,7 @@ pub fn init_voice_state() -> Result<VoiceState, AppError> {
             cb_clone,
             config,
             DEFAULT_MODEL_URI.to_string(),
-            DEFAULT_MODEL_PATH.to_string(),
+            model_path,
         );
     });
 

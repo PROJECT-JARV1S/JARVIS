@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { X, Cpu, User } from 'lucide-react';
 
@@ -13,34 +13,7 @@ interface MCPMessageLogProps {
   onClose: () => void;
 }
 
-const renderMessageText = (text: string) => {
-  if (!text) return null;
-  const parts = text.split('**');
-  return parts.map((part, i) => {
-    const isBold = i % 2 === 1;
-    const subParts = part.split('`');
-    const renderedSubParts = subParts.map((subPart, j) => {
-      const isCode = j % 2 === 1;
-      if (isCode) {
-        return (
-          <code key={j} className="bg-jarvis-blue/10 border border-jarvis-blue/20 px-1 py-0.5 rounded font-mono text-[12px] text-jarvis-blue">
-            {subPart}
-          </code>
-        );
-      }
-      return subPart;
-    });
-
-    if (isBold) {
-      return (
-        <strong key={i} className="font-extrabold text-white">
-          {renderedSubParts}
-        </strong>
-      );
-    }
-    return <React.Fragment key={i}>{renderedSubParts}</React.Fragment>;
-  });
-};
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 
 export const MCPMessageLog = ({ messages, onClose }: MCPMessageLogProps) => {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -58,15 +31,15 @@ export const MCPMessageLog = ({ messages, onClose }: MCPMessageLogProps) => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
       // Sits right above the prompt bar, full width up to max-5xl
-      className="w-full max-w-5xl mb-4 bg-surface-1/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col pointer-events-auto"
+      className="w-full max-w-5xl mb-4 bg-theme-surface-1 backdrop-blur-2xl border border-theme-border rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col pointer-events-auto"
       style={{ maxHeight: '400px' }} // "top is the limit" - restricts how tall it can grow
     >
       {/* Header */}
       <div className="px-4 py-2 border-b border-white/5 flex justify-between items-center bg-black/20">
-        <span className="text-[10px] font-mono text-jarvis-blue uppercase tracking-widest">Uplink_History</span>
+        <span className="text-[10px] font-mono text-theme-accent uppercase tracking-widest">Uplink_History</span>
         <button 
           onClick={onClose}
-          className="text-surface-3 hover:text-white transition-colors"
+          className="text-secondary-txt hover:text-white transition-colors"
           title="Hide History"
         >
           <X size={14} />
@@ -76,12 +49,15 @@ export const MCPMessageLog = ({ messages, onClose }: MCPMessageLogProps) => {
       {/* Message List */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col gap-4">
         {messages.map((msg) => (
-          <div 
+          <motion.div 
             key={msg.id} 
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 120, damping: 14 }}
             className={`flex gap-3 max-w-[80%] ${msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
           >
             {/* Avatar */}
-            <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 mt-0.5 ${msg.sender === 'user' ? 'bg-white/10 text-white' : 'bg-jarvis-blue/20 text-jarvis-blue'}`}>
+            <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 mt-0.5 ${msg.sender === 'user' ? 'bg-white/10 text-white' : 'bg-theme-accent/20 text-theme-accent'}`}>
               {msg.sender === 'user' ? <User size={12} /> : <Cpu size={12} />}
             </div>
             
@@ -89,11 +65,11 @@ export const MCPMessageLog = ({ messages, onClose }: MCPMessageLogProps) => {
             <div className={`p-3 rounded-lg text-sm font-mono whitespace-pre-wrap ${
               msg.sender === 'user' 
                 ? 'bg-white/5 text-primary-txt rounded-tr-none' 
-                : 'bg-jarvis-blue/10 border border-jarvis-blue/20 text-jarvis-blue rounded-tl-none'
+                : 'bg-theme-accent/10 border border-theme-accent/20 text-theme-accent rounded-tl-none'
             }`}>
-              {renderMessageText(msg.text)}
+              <MarkdownRenderer content={msg.text} theme="online" />
             </div>
-          </div>
+          </motion.div>
         ))}
         {/* Invisible div to scroll to */}
         <div ref={bottomRef} />

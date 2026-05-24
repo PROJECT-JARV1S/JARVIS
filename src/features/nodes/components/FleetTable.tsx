@@ -6,26 +6,31 @@ interface FleetTableProps {
 }
 
 export const FleetTable = ({ devices }: FleetTableProps) => {
+
   return (
-    <Card title="Fleet Status Overview" className="h-full">
+    <Card title="Fleet Status Overview" className="h-full border-theme-border">
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-            {/* BRIGHTENED: Changed text-surface-3 to primary-txt/50 */}
-            <tr className="border-b border-white/10 font-sans text-xs font-bold text-secondary-txt uppercase tracking-wider">
-              <th className="pb-3 text-left">Device Name</th>
+            <tr className="border-b border-theme-border font-sans text-xs font-bold text-secondary-txt uppercase tracking-wider">
+              <th className="pb-3 text-left pl-3">Device Name</th>
               <th className="pb-3 text-center">CPU Load</th>
               <th className="pb-3 text-center">Memory</th>
               <th className="pb-3 text-center">Storage</th>
-              <th className="pb-3 text-right">Net Traffic</th>
+              <th className="pb-3 text-right pr-3">Net Traffic</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-theme-border/40">
             {devices.map((device) => (
-              <tr key={device.id} className="group hover:bg-white/5 transition-colors">
-                <td className="py-4 flex items-center gap-3">
-                  <div className={`w-2 h-2 ml-2 rounded-full ${device.status === 'online' ? 'bg-success-green shadow-[0_0_8px_#00FF66]' : 'bg-secondary-txt'}`} />
-                  <span className="font-sans text-[15px] font-semibold text-primary-txt tracking-tight">{device.name}</span>
+              <tr key={device.id} className="group hover:bg-theme-accent/5 transition-colors">
+                <td className="py-4 flex items-center gap-3 pl-3">
+                  <div className="relative flex h-2 w-2 shrink-0">
+                    {device.status === 'online' && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success-green opacity-75"></span>
+                    )}
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${device.status === 'online' ? 'bg-success-green shadow-[0_0_8px_#00FF66]' : 'bg-secondary-txt'}`}></span>
+                  </div>
+                  <span className="font-sans text-[15px] font-semibold text-primary-txt tracking-tight group-hover:text-theme-accent transition-colors duration-300">{device.name}</span>
                 </td>
 
                 <td className="py-4 px-4 align-middle">
@@ -36,7 +41,7 @@ export const FleetTable = ({ devices }: FleetTableProps) => {
                     </div>
                     <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
                       <div 
-                        className={`h-full transition-all ${device.cpu > 80 ? 'bg-error-red shadow-[0_0_5px_#FF3333]' : 'bg-jarvis-blue'}`} 
+                        className={`h-full transition-all ${device.cpu > 80 ? 'bg-error-red shadow-[0_0_5px_#FF3333]' : 'bg-theme-accent'}`} 
                         style={{ width: `${device.cpu}%` }} 
                       />
                     </div>
@@ -59,7 +64,7 @@ export const FleetTable = ({ devices }: FleetTableProps) => {
                 </td>
 
                 <td className="py-4 text-center text-[15px] font-mono text-primary-txt">{device.storage}%</td>
-                <td className="py-4 text-right text-[15px] font-mono text-jarvis-blue font-bold pr-3">{device.network}</td>
+                <td className="py-4 text-right text-[15px] font-mono text-theme-accent font-bold pr-3">{device.network}</td>
               </tr>
             ))}
           </tbody>

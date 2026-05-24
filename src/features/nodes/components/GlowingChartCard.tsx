@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/Card';
 import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';
+import { useTheme } from '@/context/ThemeContext';
 
 interface GlowingChartCardProps {
   title: string;
@@ -9,7 +10,7 @@ interface GlowingChartCardProps {
   bottomRightText: string;
   data: any[];
   dataKey: string;
-  colorHex: string; // e.g., "#00F0FF"
+  colorHex: string; // fallback color
   gradientId: string; // Needs to be unique per chart so gradients don't mix
 }
 
@@ -21,17 +22,40 @@ export const GlowingChartCard = ({
   bottomRightText,
   data,
   dataKey,
-  colorHex,
+  colorHex: _colorHex,
   gradientId
 }: GlowingChartCardProps) => {
+  const { theme } = useTheme();
+
+  // Resolve color dynamically based on active theme
+  const activeColorHex = theme === 'cyberpunk' 
+    ? '#ff007f' 
+    : theme === 'amber' 
+      ? '#ffaa00' 
+      : '#00F0FF';
+
   return (
     <Card 
-      className="h-64 flex flex-col relative overflow-hidden transition-all duration-500"
+      className="h-64 flex flex-col relative overflow-hidden transition-all duration-500 hover:border-theme-accent/50"
       style={{ 
-        borderColor: `${colorHex}40`, // 40 is hex for 25% opacity
-        boxShadow: `inset 0 0 20px ${colorHex}05` // extremely faint inner glow
+        borderColor: `${activeColorHex}25`,
+        boxShadow: `inset 0 0 20px ${activeColorHex}05`
       }}
     >
+      {/* Radar sweep scanline */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-theme-accent/10 to-transparent -translate-x-full animate-radar-sweep pointer-events-none z-10" />
+
+      {/* Styled animation block */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes radarSweep {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-radar-sweep {
+          animation: radarSweep 6s infinite linear;
+        }
+      `}} />
+
       {/* Top Header Section */}
       <div className="flex justify-between items-start z-10 relative">
         <div>
@@ -39,7 +63,7 @@ export const GlowingChartCard = ({
           <p className="font-mono text-[10px] text-surface-3 mt-1">{subValue}</p>
         </div>
         <div className="text-right">
-          <span className="font-mono text-2xl font-bold" style={{ color: colorHex }}>{value}</span>
+          <span className="font-mono text-2xl font-bold transition-colors duration-500" style={{ color: activeColorHex }}>{value}</span>
         </div>
       </div>
 
@@ -50,8 +74,8 @@ export const GlowingChartCard = ({
             {/* Define the gradient fading down */}
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={colorHex} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={colorHex} stopOpacity={0} />
+                <stop offset="5%" stopColor={activeColorHex} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={activeColorHex} stopOpacity={0} />
               </linearGradient>
             </defs>
             
@@ -61,12 +85,12 @@ export const GlowingChartCard = ({
             <Area 
               type="monotone" // This makes the line perfectly smooth/wavy
               dataKey={dataKey} 
-              stroke={colorHex} 
+              stroke={activeColorHex} 
               strokeWidth={3}
               fillOpacity={1} 
               fill={`url(#${gradientId})`} 
               // The magic drop-shadow for the neon glow
-              style={{ filter: `drop-shadow(0px 4px 8px ${colorHex}80)` }}
+              style={{ filter: `drop-shadow(0px 4px 8px ${activeColorHex}80)` }}
               isAnimationActive={true}
             />
           </AreaChart>

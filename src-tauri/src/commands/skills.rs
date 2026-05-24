@@ -12,14 +12,24 @@
 
 use crate::domain::errors::AppError;
 
-/// Placeholder: query device info from jarvis-skills MCP.
+/// Queries system/device information from the `jarvis-skills` MCP server.
+///
+/// # Returns
+///
+/// Returns a JSON-formatted string containing system details on success,
+/// or an [`AppError`] on failure.
 #[tauri::command]
 pub async fn get_device_info() -> Result<String, AppError> {
     crate::handlers::skills::get_device_info()
 }
 
-/// Placeholder: list available skills from the MCP server.
+/// Retrieves the list of available system integration capabilities (skills) from the MCP server.
+///
+/// # Returns
+///
+/// Returns a list of capability names on success, or an [`AppError`] on failure.
 #[tauri::command]
 pub async fn list_skills() -> Result<Vec<String>, AppError> {
     crate::handlers::skills::list_skills()
 }
+

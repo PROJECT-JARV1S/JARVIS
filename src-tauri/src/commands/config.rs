@@ -1,8 +1,23 @@
+//! Tauri commands for application configuration management.
+//!
+//! This module exposes command handlers to the frontend for retrieving and
+//! updating the global settings of the JARVIS application (such as active LLM providers,
+//! API keys, or voice detection thresholds).
+
 use crate::domain::config::AppConfig;
 use crate::domain::errors::AppError;
 use tauri::{AppHandle, Manager, State};
 
-/// Get the current application configuration.
+/// Retrieves the current application configuration, augmented with default system values.
+///
+/// # Arguments
+///
+/// * `config` - The current configuration stored in the application's global state.
+///
+/// # Returns
+///
+/// Returns a serialized [`serde_json::Value`] representing the application's configuration,
+/// including fallback settings (like `vad_threshold`), or an [`AppError`] on failure.
 #[tauri::command]
 pub async fn get_config(
     config: State<'_, std::sync::Mutex<AppConfig>>,
@@ -21,7 +36,17 @@ pub async fn get_config(
     Ok(val)
 }
 
-/// Update the application configuration and save it to disk.
+/// Updates the application configuration in global state and persists it to disk.
+///
+/// # Arguments
+///
+/// * `new_config` - The new application configuration structure to apply.
+/// * `config` - The active configuration stored in the application's global state.
+/// * `app` - The Tauri application handle used to resolve system paths.
+///
+/// # Returns
+///
+/// Returns `Ok(())` on success, or an [`AppError`] on failure.
 #[tauri::command]
 pub async fn update_config(
     new_config: AppConfig,
@@ -43,3 +68,4 @@ pub async fn update_config(
 
     Ok(())
 }
+

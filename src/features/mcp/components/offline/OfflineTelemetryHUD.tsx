@@ -1,32 +1,11 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef } from 'react';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import {
   Cpu, MemoryStick, Wifi, WifiOff, Bluetooth, BluetoothOff,
-  Volume2, VolumeX, Monitor, ChevronRight, ChevronLeft,
-  Activity, Server, HardDrive
+  Volume2, VolumeX, ChevronRight, ChevronLeft,
+  Activity, HardDrive, X, GripVertical, ExternalLink
 } from 'lucide-react';
-
-// ─── Simulated Hardware Data ────────────────────────────────────────────────
-// These will be replaced with real Tauri IPC calls once the backend is ready.
-
-const useSimulatedTelemetry = () => {
-  const [cpu, setCpu] = useState(32);
-  const [ram, setRam] = useState(54);
-  const [disk, setDisk] = useState(67);
-  const [temp, setTemp] = useState(42);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCpu(prev => Math.min(100, Math.max(5, prev + (Math.random() * 12 - 6))));
-      setRam(prev => Math.min(100, Math.max(20, prev + (Math.random() * 6 - 3))));
-      setDisk(prev => Math.min(100, Math.max(40, prev + (Math.random() * 2 - 1))));
-      setTemp(prev => Math.min(85, Math.max(30, prev + (Math.random() * 4 - 2))));
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
-
-  return { cpu: Math.round(cpu), ram: Math.round(ram), disk: Math.round(disk), temp: Math.round(temp) };
-};
+import { useSystemInfo } from '@/hooks/useSystemInfo';
 
 // ─── Telemetry Bar ──────────────────────────────────────────────────────────
 
@@ -102,10 +81,203 @@ interface OfflineTelemetryHUDProps {
 }
 
 export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDProps) => {
-  const { cpu, ram, disk, temp } = useSimulatedTelemetry();
+  const { systemInfo, isSimulated } = useSystemInfo();
+  
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const cpuDragControls = useDragControls();
+  const controlDragControls = useDragControls();
+
+  const cpu = systemInfo ? Math.round(systemInfo.cpu_usage) : 0;
+  const ram = systemInfo ? Math.round(systemInfo.ram_usage) : 0;
+  const disk = systemInfo ? Math.round(systemInfo.disk_usage) : 0;
+  const temp = systemInfo?.cpu_temperature ? Math.round(systemInfo.cpu_temperature) : 0;
+
   const [volume, setVolume] = useState(65);
   const [wifiEnabled, setWifiEnabled] = useState(false);
   const [btEnabled, setBtEnabled] = useState(false);
+
+  // Widget Detach States
+  const [isCpuFloated, setIsCpuFloated] = useState(false);
+  const [isControlFloated, setIsControlFloated] = useState(false);
+
+  // ─── Renderers: Hardware Telemetry ───
+  const renderHardwareTelemetry = (isFloated: boolean, onDock: () => void, dragHandleProps?: any) => (
+    <div className={`${isFloated ? 'p-4' : ''}`}>
+      <div 
+        {...dragHandleProps}
+        className={`flex items-center gap-2 mb-4 select-none ${isFloated ? 'cursor-grab active:cursor-grabbing bg-black/10 -mx-4 -mt-4 p-4 border-b border-white/5' : ''}`}
+      >
+        {isFloated ? (
+          <GripVertical size={14} className="text-secondary-txt/45" />
+        ) : (
+          <Activity size={12} className="text-offline-core/60" />
+        )}
+        <h3 className="text-xs font-mono uppercase tracking-[0.15em] text-offline-core/80 font-bold">
+          Hardware_Telemetry
+        </h3>
+        {isSimulated ? (
+          <span className="ml-auto text-[10px] font-mono text-warning-orange/70 uppercase tracking-wider animate-pulse">
+            Simulated
+          </span>
+        ) : (
+          <span className="ml-auto text-[10px] font-mono text-success-green/80 uppercase tracking-wider">
+            Live
+          </span>
+        )}
+        {isFloated ? (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDock(); }}
+            className="ml-2 text-secondary-txt/60 hover:text-error-red transition-colors p-1 rounded hover:bg-white/5 cursor-pointer"
+            title="Dock Panel"
+          >
+            <X size={14} />
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsCpuFloated(true)}
+            className="ml-2 text-secondary-txt/40 hover:text-offline-core transition-colors p-1 rounded hover:bg-white/5 cursor-pointer"
+            title="Float Panel"
+          >
+            <ExternalLink size={12} />
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-4 bg-black/20 border border-white/5 rounded-lg p-3">
+        <TelemetryBar label="CPU" value={cpu} icon={<Cpu size={12} />} warning={cpu > 85} />
+        <TelemetryBar label="RAM" value={ram} icon={<MemoryStick size={12} />} warning={ram > 90} />
+        <TelemetryBar label="Disk" value={disk} icon={<HardDrive size={12} />} warning={disk > 90} />
+
+        {/* Temperature readout */}
+        <div className="flex items-center justify-between pt-2 border-t border-white/5">
+          <span className="text-xs font-mono text-secondary-txt/70 uppercase tracking-wider">Core Temp</span>
+          <span className={`text-sm font-mono font-bold ${temp > 75 ? 'text-error-red animate-pulse' : 'text-offline-core'}`}>
+            {temp}°C
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─── Renderers: Control Deck ───
+  const renderControlDeck = (isFloated: boolean, onDock: () => void, dragHandleProps?: any) => (
+    <div className={`${isFloated ? 'p-4' : ''}`}>
+      <div 
+        {...dragHandleProps}
+        className={`flex items-center gap-2 mb-3 select-none ${isFloated ? 'cursor-grab active:cursor-grabbing bg-black/10 -mx-4 -mt-4 p-4 border-b border-white/5' : ''}`}
+      >
+        {isFloated ? (
+          <GripVertical size={14} className="text-secondary-txt/45" />
+        ) : (
+          <Volume2 size={12} className="text-offline-core/60" />
+        )}
+        <h3 className="text-xs font-mono uppercase tracking-[0.15em] text-offline-core/80 font-bold">
+          Control_Deck
+        </h3>
+        {isFloated ? (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDock(); }}
+            className="ml-auto text-secondary-txt/60 hover:text-error-red transition-colors p-1 rounded hover:bg-white/5 cursor-pointer"
+            title="Dock Panel"
+          >
+            <X size={14} />
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsControlFloated(true)}
+            className="ml-auto text-secondary-txt/40 hover:text-offline-core transition-colors p-1 rounded hover:bg-white/5 cursor-pointer"
+            title="Float Panel"
+          >
+            <ExternalLink size={12} />
+          </button>
+        )}
+      </div>
+
+      <div className="bg-black/20 border border-white/5 rounded-lg p-3 space-y-3">
+        {/* Volume Slider */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2 text-xs font-mono text-secondary-txt/80 uppercase tracking-wider">
+              {volume === 0 ? <VolumeX size={12} className="text-error-red" /> : <Volume2 size={12} className="text-offline-core" />}
+              System Vol
+            </span>
+            <span className="text-xs font-mono font-bold text-offline-core">{volume}%</span>
+          </div>
+          <div className="relative group">
+            <div className="h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+              <div
+                className="h-full bg-gradient-to-r from-offline-core/40 to-offline-core rounded-full transition-all duration-100"
+                style={{ width: `${volume}%` }}
+              />
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={volume}
+              onChange={(e) => setVolume(parseInt(e.target.value))}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            {/* Thumb */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-offline-core shadow-[0_0_10px_rgba(244,244,245,0.4)] pointer-events-none group-hover:scale-125 transition-transform"
+              style={{ left: `calc(${volume}% - 6px)` }}
+            />
+          </div>
+        </div>
+
+        {/* Wifi & Bluetooth Toggles */}
+        <div className="space-y-2 pt-2 border-t border-white/5">
+          <HardwareToggle
+            label="Wi-Fi"
+            enabled={wifiEnabled}
+            onToggle={() => setWifiEnabled(!wifiEnabled)}
+            iconOn={<Wifi size={14} />}
+            iconOff={<WifiOff size={14} />}
+          />
+          <HardwareToggle
+            label="Bluetooth"
+            enabled={btEnabled}
+            onToggle={() => setBtEnabled(!btEnabled)}
+            iconOn={<Bluetooth size={14} />}
+            iconOff={<BluetoothOff size={14} />}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─── Renderers: Sidebar Placeholders ───
+  const renderHardwarePlaceholder = () => (
+    <div className="border border-dashed border-white/10 rounded-lg p-4 flex flex-col items-center justify-center min-h-[160px] bg-black/5 select-none">
+      <Activity size={18} className="text-secondary-txt/20 mb-2" />
+      <span className="text-[10px] font-mono text-secondary-txt/30 uppercase tracking-wider">
+        Telemetry_Floated
+      </span>
+      <button 
+        onClick={() => setIsCpuFloated(false)}
+        className="mt-2 text-[9px] font-mono text-offline-core/60 hover:text-offline-core hover:underline cursor-pointer"
+      >
+        [Dock_Back]
+      </button>
+    </div>
+  );
+
+  const renderControlPlaceholder = () => (
+    <div className="border border-dashed border-white/10 rounded-lg p-4 flex flex-col items-center justify-center min-h-[160px] bg-black/5 select-none">
+      <Volume2 size={18} className="text-secondary-txt/20 mb-2" />
+      <span className="text-[10px] font-mono text-secondary-txt/30 uppercase tracking-wider">
+        Controls_Floated
+      </span>
+      <button 
+        onClick={() => setIsControlFloated(false)}
+        className="mt-2 text-[9px] font-mono text-offline-core/60 hover:text-offline-core hover:underline cursor-pointer"
+      >
+        [Dock_Back]
+      </button>
+    </div>
+  );
 
   return (
     <>
@@ -118,6 +290,53 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
         {isOpen ? <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" /> : <ChevronLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />}
       </button>
 
+      {/* Invisible Viewport Bounds Constraint for Dragging */}
+      {(isCpuFloated || isControlFloated) && (
+        <div ref={viewportRef} className="fixed inset-0 pointer-events-none z-30" />
+      )}
+
+      {/* ── Floating Panels Rendered outside Sidebar ── */}
+      <AnimatePresence>
+        {isCpuFloated && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            drag
+            dragListener={false}
+            dragControls={cpuDragControls}
+            dragConstraints={viewportRef}
+            dragMomentum={false}
+            dragElastic={0.05}
+            className="fixed top-24 right-[20rem] z-40 w-72 bg-offline-surface-dark border border-offline-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md overflow-hidden pointer-events-auto"
+          >
+            {renderHardwareTelemetry(true, () => setIsCpuFloated(false), {
+              onPointerDown: (e: React.PointerEvent) => cpuDragControls.start(e)
+            })}
+          </motion.div>
+        )}
+
+        {isControlFloated && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            drag
+            dragListener={false}
+            dragControls={controlDragControls}
+            dragConstraints={viewportRef}
+            dragMomentum={false}
+            dragElastic={0.05}
+            className="fixed bottom-24 right-[20rem] z-40 w-72 bg-offline-surface-dark border border-offline-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md overflow-hidden pointer-events-auto"
+          >
+            {renderControlDeck(true, () => setIsControlFloated(false), {
+              onPointerDown: (e: React.PointerEvent) => controlDragControls.start(e)
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Main Sidebar Drawer ── */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -128,133 +347,30 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
             className="h-full bg-offline-surface-dark border-l border-offline-border/60 overflow-hidden shrink-0 relative"
           >
             <div className="w-72 h-full overflow-y-auto custom-scrollbar p-4 flex flex-col gap-5">
+              
+              {/* Telemetry Panel Items */}
+              {isCpuFloated ? renderHardwarePlaceholder() : renderHardwareTelemetry(false, () => {})}
+              
+              {/* Controls Panel Items */}
+              {isControlFloated ? renderControlPlaceholder() : renderControlDeck(false, () => {})}
 
-              {/* ── Section: Hardware Telemetry ── */}
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Activity size={12} className="text-offline-core/60" />
-                  <h3 className="text-xs font-mono uppercase tracking-[0.15em] text-offline-core/80 font-bold">
-                    Hardware_Telemetry
-                  </h3>
-                  <span className="ml-auto text-[10px] font-mono text-warning-orange/70 uppercase tracking-wider">
-                    Simulated
-                  </span>
-                </div>
-
-                <div className="space-y-4 bg-black/20 border border-white/5 rounded-lg p-3">
-                  <TelemetryBar label="CPU" value={cpu} icon={<Cpu size={12} />} warning={cpu > 85} />
-                  <TelemetryBar label="RAM" value={ram} icon={<MemoryStick size={12} />} warning={ram > 90} />
-                  <TelemetryBar label="Disk" value={disk} icon={<HardDrive size={12} />} warning={disk > 90} />
-
-                  {/* Temperature readout */}
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                    <span className="text-xs font-mono text-secondary-txt/70 uppercase tracking-wider">Core Temp</span>
-                    <span className={`text-sm font-mono font-bold ${temp > 75 ? 'text-error-red animate-pulse' : 'text-offline-core'}`}>
-                      {temp}°C
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Section: Connected Nodes ── */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Server size={12} className="text-offline-core/60" />
-                  <h3 className="text-xs font-mono uppercase tracking-[0.15em] text-offline-core/80 font-bold">
-                    Connected_Nodes
-                  </h3>
-                </div>
-                <div className="bg-black/20 border border-white/5 rounded-lg p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-offline-core/5 border border-offline-core/20 flex items-center justify-center">
-                      <Monitor size={18} className="text-offline-core/80" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-mono text-primary-txt font-bold">LOCAL_HOST</div>
-                      <div className="text-[10px] font-mono text-secondary-txt/60 uppercase tracking-wider">Master Node • Air-Gapped</div>
-                    </div>
-                    <div className="w-2 h-2 rounded-full bg-offline-core shadow-[0_0_6px_var(--color-offline-core)] animate-pulse" />
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-xs font-mono text-secondary-txt/60 uppercase tracking-wider">Total Devices</span>
-                    <span className="text-xs font-mono font-bold text-primary-txt">1 Online</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Section: Hardware Control Deck ── */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Volume2 size={12} className="text-offline-core/60" />
-                  <h3 className="text-xs font-mono uppercase tracking-[0.15em] text-offline-core/80 font-bold">
-                    Control_Deck
-                  </h3>
-                </div>
-
-                <div className="bg-black/20 border border-white/5 rounded-lg p-3 space-y-3">
-                  {/* Volume Slider */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-xs font-mono text-secondary-txt/80 uppercase tracking-wider">
-                        {volume === 0 ? <VolumeX size={12} className="text-error-red" /> : <Volume2 size={12} className="text-offline-core" />}
-                        System Vol
-                      </span>
-                      <span className="text-xs font-mono font-bold text-offline-core">{volume}%</span>
-                    </div>
-                    <div className="relative group">
-                      <div className="h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                        <div
-                          className="h-full bg-gradient-to-r from-offline-core/40 to-offline-core rounded-full transition-all duration-100"
-                          style={{ width: `${volume}%` }}
-                        />
-                      </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={volume}
-                        onChange={(e) => setVolume(parseInt(e.target.value))}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                      {/* Thumb */}
-                      <div
-                        className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-offline-core shadow-[0_0_10px_rgba(244,244,245,0.4)] pointer-events-none group-hover:scale-125 transition-transform"
-                        style={{ left: `calc(${volume}% - 6px)` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Wifi & Bluetooth Toggles */}
-                  <div className="space-y-2 pt-2 border-t border-white/5">
-                    <HardwareToggle
-                      label="Wi-Fi"
-                      enabled={wifiEnabled}
-                      onToggle={() => setWifiEnabled(!wifiEnabled)}
-                      iconOn={<Wifi size={14} />}
-                      iconOff={<WifiOff size={14} />}
-                    />
-                    <HardwareToggle
-                      label="Bluetooth"
-                      enabled={btEnabled}
-                      onToggle={() => setBtEnabled(!btEnabled)}
-                      iconOn={<Bluetooth size={14} />}
-                      iconOff={<BluetoothOff size={14} />}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Footer: Degraded Mode Warning ── */}
+              {/* ── Footer: Telemetry Mode State ── */}
               <div className="mt-auto pt-3 border-t border-white/5">
-                <div className="flex items-center gap-2 text-[10px] font-mono text-warning-orange/50 uppercase tracking-[0.15em]">
-                  <div className="w-1.5 h-1.5 rounded-full bg-warning-orange/50" />
-                  Telemetry_Mode: Simulated
+                <div className={`flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.15em] ${
+                  isSimulated ? 'text-warning-orange/50' : 'text-success-green/60'
+                }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${
+                    isSimulated ? 'bg-warning-orange/50 animate-pulse' : 'bg-success-green/60'
+                  }`} />
+                  Telemetry_Mode: {isSimulated ? 'Simulated' : 'Live'}
                 </div>
                 <p className="text-[10px] font-mono text-secondary-txt/50 mt-1 leading-relaxed">
-                  Real hardware data will sync when jarvis-skills MCP module is deployed.
+                  {isSimulated 
+                    ? 'Real hardware data will sync when jarvis-skills MCP module is deployed.' 
+                    : 'Streaming telemetry directly from Tauri backend.'}
                 </p>
               </div>
+
             </div>
           </motion.div>
         )}

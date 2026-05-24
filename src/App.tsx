@@ -15,6 +15,7 @@ import { ModeSelectionPage } from '@/pages/ModeSelectionPage';
 
 // Components
 import { IntroBootSequence } from '@/components/ui/IntroBootSequence';
+import { ModeSwitchTransition } from '@/components/ui/ModeSwitchTransition';
 
 import './styles.css';
 
@@ -25,15 +26,26 @@ function App() {
     return 'intro';
   });
 
+  const [transitionTarget, setTransitionTarget] = useState<'online' | 'offline' | 'selection' | null>(null);
+
   const handleModeSelect = (mode: 'online' | 'offline') => {
-    sessionStorage.setItem('jarvis_mode', mode);
-    setBootState(mode);
+    setTransitionTarget(mode);
+  };
+
+  const handleTransitionComplete = () => {
+    if (transitionTarget === 'online' || transitionTarget === 'offline') {
+      sessionStorage.setItem('jarvis_mode', transitionTarget);
+      setBootState(transitionTarget);
+    } else if (transitionTarget === 'selection') {
+      setBootState('selection');
+    }
+    setTransitionTarget(null);
   };
 
   useEffect(() => {
     // Returns user to the Protocol Selection screen (Triggered by Offline Sidebar)
     const handleSelection = () => {
-      setBootState('selection');
+      setTransitionTarget('selection');
     };
 
     // Performs a full system reset back to the Video Intro
@@ -102,6 +114,17 @@ function App() {
               </Routes>
             </BrowserRouter>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cinematic Transition Overlay */}
+      <AnimatePresence>
+        {transitionTarget && (
+          <ModeSwitchTransition 
+            key="mode-switch-transition"
+            target={transitionTarget} 
+            onComplete={handleTransitionComplete} 
+          />
         )}
       </AnimatePresence>
     </div>

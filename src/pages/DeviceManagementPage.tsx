@@ -35,7 +35,7 @@ export const DeviceManagementPage = () => {
             <Plus size={14} /> Link Device
           </Button>
           <Button variant="outline" size="sm">
-            <Zap size={14} className="text-jarvis-blue" /> Sync All
+            <Zap size={14} className="text-theme-accent" /> Sync All
           </Button>
         </div>
       </div>

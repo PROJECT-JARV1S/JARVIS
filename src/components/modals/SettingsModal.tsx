@@ -82,7 +82,7 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
   };
 
   const isOffline = currentMode === 'offline';
-  const accent = isOffline ? 'offline-core' : 'jarvis-blue';
+  const accent = isOffline ? 'offline-core' : 'theme-accent';
 
   const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     { id: 'general', label: 'General', icon: <Cpu size={14} /> },
@@ -111,10 +111,10 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             className={`relative w-full max-w-4xl h-[600px] border rounded-xl overflow-hidden shadow-2xl flex flex-col
               ${isOffline ? 'border-offline-border bg-offline-bg' : 'border-theme-border bg-theme-bg'}
             `}
-            style={{
-              '--theme-accent': isOffline ? 'var(--color-offline-core)' : 'var(--theme-accent)',
-              '--theme-accent-rgb': isOffline ? 'var(--color-offline-core-rgb)' : 'var(--theme-accent-rgb)'
-            } as React.CSSProperties}
+            style={isOffline ? {
+              '--theme-accent': 'var(--color-offline-core)',
+              '--theme-accent-rgb': 'var(--color-offline-core-rgb)'
+            } as React.CSSProperties : undefined}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5 shrink-0">

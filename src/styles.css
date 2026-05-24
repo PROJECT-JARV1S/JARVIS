@@ -61,7 +61,7 @@
     --theme-grid-color: rgba(0, 240, 255, 0.015);
 }
 
-.theme-jarvis {
+html.theme-jarvis, .theme-jarvis {
     --theme-accent: #00F0FF;
     --theme-accent-rgb: 0, 240, 255;
     --theme-bg-base: #121212;
@@ -70,9 +70,17 @@
     --theme-border: rgba(255, 255, 255, 0.05);
     --theme-border-hover: rgba(0, 240, 255, 0.2);
     --theme-grid-color: rgba(0, 240, 255, 0.015);
+
+    /* Tailwind override variables */
+    --color-theme-accent: #00F0FF;
+    --color-theme-bg: #121212;
+    --color-theme-surface-1: #1E1E1E;
+    --color-theme-surface-2: #2A2A2A;
+    --color-theme-border: rgba(255, 255, 255, 0.05);
+    --color-theme-border-hover: rgba(0, 240, 255, 0.2);
 }
 
-.theme-cyberpunk {
+html.theme-cyberpunk, .theme-cyberpunk {
     --theme-accent: #ff007f;
     --theme-accent-rgb: 255, 0, 127;
     --theme-bg-base: #0f051d;
@@ -81,9 +89,17 @@
     --theme-border: rgba(255, 0, 127, 0.15);
     --theme-border-hover: rgba(255, 0, 127, 0.35);
     --theme-grid-color: rgba(255, 0, 127, 0.025);
+
+    /* Tailwind override variables */
+    --color-theme-accent: #ff007f;
+    --color-theme-bg: #0f051d;
+    --color-theme-surface-1: rgba(35, 15, 60, 0.4);
+    --color-theme-surface-2: rgba(50, 20, 85, 0.6);
+    --color-theme-border: rgba(255, 0, 127, 0.15);
+    --color-theme-border-hover: rgba(255, 0, 127, 0.35);
 }
 
-.theme-amber {
+html.theme-amber, .theme-amber {
     --theme-accent: #ffaa00;
     --theme-accent-rgb: 255, 170, 0;
     --theme-bg-base: #110d05;
@@ -92,12 +108,20 @@
     --theme-border: rgba(255, 170, 0, 0.15);
     --theme-border-hover: rgba(255, 170, 0, 0.35);
     --theme-grid-color: rgba(255, 170, 0, 0.02);
+
+    /* Tailwind override variables */
+    --color-theme-accent: #ffaa00;
+    --color-theme-bg: #110d05;
+    --color-theme-surface-1: rgba(40, 30, 10, 0.4);
+    --color-theme-surface-2: rgba(60, 42, 15, 0.6);
+    --color-theme-border: rgba(255, 170, 0, 0.15);
+    --color-theme-border-hover: rgba(255, 170, 0, 0.35);
 }
 
 /* Apply the base foundation to the whole app */
 @layer base {
     body {
-        background-color: var(--color-base);
+        background-color: var(--theme-bg-base);
         color: var(--color-primary-txt);
         font-family: var(--font-sans);
         -webkit-font-smoothing: antialiased;

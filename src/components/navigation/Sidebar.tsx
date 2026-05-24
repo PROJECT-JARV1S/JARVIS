@@ -7,6 +7,7 @@ import {
   ChevronFirst, 
   ChevronLast 
 } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 import { navigations } from '@/config/navigations';
 
 interface SidebarProps {
@@ -16,6 +17,17 @@ interface SidebarProps {
 export const Sidebar = ({ onSettingsClick }: SidebarProps) => {
   const [isOpen, setIsOpen] = useState(true); 
   const location = useLocation();
+  const { theme } = useTheme();
+
+  const getLogoFilter = () => {
+    if (theme === 'cyberpunk') {
+      return 'hue-rotate-[150deg] saturate-[2.5] brightness-[1.1] drop-shadow-[0_0_8px_rgba(255,0,127,0.35)]';
+    }
+    if (theme === 'amber') {
+      return 'hue-rotate-[220deg] saturate-[2.5] brightness-[1.1] drop-shadow-[0_0_8px_rgba(255,170,0,0.35)]';
+    }
+    return 'drop-shadow-[0_0_8px_rgba(0,240,255,0.35)]';
+  };
 
   return (
     <motion.aside 
@@ -33,7 +45,7 @@ export const Sidebar = ({ onSettingsClick }: SidebarProps) => {
           <img 
             src={JarvisIcon}
             alt="Jarvis Logo" 
-            className="ml-[1px] w-10 h-10 object-contain" 
+            className={`ml-[1px] w-10 h-10 object-contain transition-all duration-500 ${getLogoFilter()}`}
           />
           <AnimatePresence mode="wait">
             {isOpen && (
@@ -51,7 +63,7 @@ export const Sidebar = ({ onSettingsClick }: SidebarProps) => {
 
         <button 
           onClick={() => setIsOpen(!isOpen)}
-          className={`flex items-center justify-center text-secondary-txt hover:text-jarvis-blue transition-all z-50
+          className={`flex items-center justify-center text-secondary-txt hover:text-theme-accent transition-all z-50
             ${isOpen 
               ? 'ml-auto w-8 h-8 rounded-md hover:bg-surface-1/50 shrink-0' 
               : 'absolute -right-3 top-4 w-6 h-6 bg-surface-2 border border-surface-3 rounded-full shadow-md'
@@ -73,7 +85,7 @@ export const Sidebar = ({ onSettingsClick }: SidebarProps) => {
               to={item.path}
               className={`flex items-center h-10 rounded-md transition-all duration-200 overflow-hidden group
                 ${isActive 
-                  ? 'bg-jarvis-blue/10 text-jarvis-blue border border-jarvis-blue/30 shadow-[inset_2px_0_0_#00F0FF]' 
+                  ? 'bg-theme-accent/10 text-theme-accent border border-theme-accent/30 shadow-[inset_2px_0_0_var(--theme-accent)]' 
                   : 'text-secondary-txt border border-transparent hover:bg-surface-1/50 hover:text-primary-txt'
                 }
               `}
@@ -104,7 +116,7 @@ export const Sidebar = ({ onSettingsClick }: SidebarProps) => {
       <div className="mt-auto flex flex-col pb-3 px-2 gap-2 border-t border-white/5 pt-3">
         <button
           onClick={onSettingsClick}
-          className="w-full flex items-center h-12 rounded-lg transition-all duration-300 overflow-hidden group text-primary-txt/80 bg-white/[0.02] border border-white/10 hover:border-jarvis-blue/30 hover:bg-jarvis-blue/5 hover:text-white hover:shadow-[0_0_15px_rgba(0,240,255,0.1)]"
+          className="w-full flex items-center h-12 rounded-lg transition-all duration-300 overflow-hidden group text-primary-txt/80 bg-white/[0.02] border border-white/10 hover:border-theme-accent/30 hover:bg-theme-accent/5 hover:text-white hover:shadow-[0_0_15px_rgba(var(--theme-accent-rgb),0.1)]"
           title={!isOpen ? "Settings" : ""}
         >
           <div className="w-12 shrink-0 flex items-center justify-center transition-transform group-hover:rotate-45">

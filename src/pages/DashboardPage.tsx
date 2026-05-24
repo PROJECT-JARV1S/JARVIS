@@ -21,7 +21,7 @@ export const DashboardPage = () => {
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center text-jarvis-blue">
+      <div className="h-full flex items-center justify-center text-theme-accent">
         <Loader2 size={40} className="animate-spin mb-4" />
         <p className="font-mono tracking-widest">BOOTING_SYSTEM...</p>
       </div>
@@ -82,7 +82,7 @@ export const DashboardPage = () => {
               <div className="flex flex-col gap-3">
                 {tasks.map(task => (
                   <div key={task.id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded transition-colors">
-                    {task.status === 'completed' ? <CheckCircle2 size={14} className="text-success-green" /> : <Circle size={14} className="text-jarvis-blue animate-pulse" />}
+                    {task.status === 'completed' ? <CheckCircle2 size={14} className="text-success-green" /> : <Circle size={14} className="text-theme-accent animate-pulse" />}
                     <p className={`text-[13px] font-sans font-medium ${task.status === 'completed' ? 'text-primary-txt/30 line-through' : 'text-primary-txt'}`}>
                       {task.title}
                     </p>

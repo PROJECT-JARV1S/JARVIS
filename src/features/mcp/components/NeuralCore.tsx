@@ -25,7 +25,7 @@ export const NeuralCore = () => {
         className={`absolute inset-0 rounded-full border ${
           isOffline 
             ? 'border-offline-core/40 shadow-[0_0_20px_rgba(244,244,245,0.2)]' 
-            : 'border-jarvis-blue shadow-[0_0_20px_rgba(0,240,255,0.3)]'
+            : 'border-theme-accent shadow-[0_0_20px_rgba(var(--theme-accent-rgb),0.3)]'
         }`}
       />
 
@@ -43,7 +43,7 @@ export const NeuralCore = () => {
         className={`w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-tr ${
           isOffline 
             ? 'from-offline-core/50 to-offline-core shadow-[0_0_30px_rgba(244,244,245,0.35)]' 
-            : 'from-jarvis-blue to-blue-400 shadow-[0_0_30px_#00F0FF]'
+            : 'from-theme-accent to-theme-accent/70 shadow-[0_0_30px_var(--theme-accent)]'
         }`}
       >
         {/* Inner Technical Detail */}

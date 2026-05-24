@@ -24,7 +24,7 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
           label="CPU Load" 
           value={device.cpu} 
           isWarning={device.cpu > 80}
-          baseColorClass="bg-jarvis-blue text-jarvis-blue"
+          baseColorClass="bg-theme-accent text-theme-accent"
         />
 
         <MetricBar 
@@ -47,7 +47,7 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
               REBOOT
             </Button>
           ) : (
-            <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 border-jarvis-blue/50 text-jarvis-blue hover:bg-jarvis-blue/10">
+            <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 border-theme-accent/50 text-theme-accent hover:bg-theme-accent/10">
               <Power size={10} /> WAKE (WOL)
             </Button>
           )}

@@ -1,3 +1,9 @@
+//! Tauri commands for the chat and session management system.
+//!
+//! This module exposes command handlers to the frontend for creating sessions,
+//! prompting the conversational agent, listing session history, and selecting/listing
+//! AI providers.
+
 use crate::domain::chat::{ChatResponse, Session};
 use crate::domain::config::AppConfig;
 use crate::domain::errors::AppError;
@@ -7,7 +13,16 @@ use crate::infrastructure::repository::SessionRepository;
 use rig::message::Message;
 use tauri::State;
 
-/// Create a new session and return the ID
+/// Creates a new chat session.
+///
+/// # Arguments
+///
+/// * `title` - An optional title to assign to the new session.
+/// * `db` - The database manager state.
+///
+/// # Returns
+///
+/// Returns the unique session ID (UUID) on success, or an [`AppError`] on failure.
 #[tauri::command]
 pub async fn create_session(
     title: Option<String>,
@@ -17,7 +32,19 @@ pub async fn create_session(
     repo.create_session(title)
 }
 
-/// Send a prompt to the Rust agent
+/// Sends a prompt to the conversational AI agent within a specific session.
+///
+/// # Arguments
+///
+/// * `session_id` - The unique identifier of the session.
+/// * `input` - The prompt or question text from the user.
+/// * `config` - The application configuration state.
+/// * `db` - The database manager state.
+///
+/// # Returns
+///
+/// Returns a [`ChatResponse`] containing the agent's message and the name of the
+/// active provider on success, or an [`AppError`] on failure.
 #[tauri::command]
 pub async fn prompt(
     session_id: String,
@@ -41,13 +68,27 @@ pub async fn prompt(
     })
 }
 
-/// Get available LLM providers
+/// Retrieves the list of available LLM providers supported by the application.
+///
+/// # Returns
+///
+/// Returns a list of provider names on success, or an [`AppError`] on failure.
 #[tauri::command]
 pub async fn get_chat_providers() -> Result<Vec<String>, AppError> {
     get_providers()
 }
 
-/// Set the active LLM provider.
+/// Sets the active LLM provider and saves the selection to the configuration file.
+///
+/// # Arguments
+///
+/// * `provider` - The name of the provider to activate (e.g. "gemini", "openai").
+/// * `config` - The application configuration state.
+/// * `app` - The Tauri application handle.
+///
+/// # Returns
+///
+/// Returns `Ok(())` on success, or an [`AppError`] on failure.
 #[tauri::command]
 pub async fn set_chat_provider(
     provider: String,
@@ -63,14 +104,32 @@ pub async fn set_chat_provider(
     set_provider(provider, &config, config_path.as_deref())
 }
 
-/// List all sessions
+/// Lists all historical and active chat sessions.
+///
+/// # Arguments
+///
+/// * `db` - The database manager state.
+///
+/// # Returns
+///
+/// Returns a list of [`Session`]s on success, or an [`AppError`] on failure.
 #[tauri::command]
 pub async fn list_sessions(db: State<'_, DatabaseManager>) -> Result<Vec<Session>, AppError> {
     let repo = SessionRepository::new(&db);
     repo.get_all_sessions()
 }
 
-/// Get history for a session
+/// Retrieves the message history for a specific chat session.
+///
+/// # Arguments
+///
+/// * `session_id` - The unique identifier of the session.
+/// * `db` - The database manager state.
+///
+/// # Returns
+///
+/// Returns a list of [`Message`]s representing the conversation history on success,
+/// or an [`AppError`] on failure.
 #[tauri::command]
 pub async fn get_history(
     session_id: String,
@@ -79,3 +138,4 @@ pub async fn get_history(
     let repo = SessionRepository::new(&db);
     repo.get_session_history(&session_id)
 }
+

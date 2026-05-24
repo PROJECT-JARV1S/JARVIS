@@ -139,3 +139,43 @@ pub async fn get_history(
     repo.get_session_history(&session_id)
 }
 
+/// Renames a chat session.
+///
+/// # Arguments
+///
+/// * `session_id` - The unique identifier of the session to rename.
+/// * `title` - The new title to assign to the session.
+/// * `db` - The database manager state.
+///
+/// # Returns
+///
+/// Returns `Ok(())` on success, or an [`AppError`] on failure.
+#[tauri::command]
+pub async fn rename_session(
+    session_id: String,
+    title: String,
+    db: State<'_, DatabaseManager>,
+) -> Result<(), AppError> {
+    let repo = SessionRepository::new(&db);
+    repo.rename_session(&session_id, &title)
+}
+
+/// Deletes a chat session and all its associated history.
+///
+/// # Arguments
+///
+/// * `session_id` - The unique identifier of the session to delete.
+/// * `db` - The database manager state.
+///
+/// # Returns
+///
+/// Returns `Ok(())` on success, or an [`AppError`] on failure.
+#[tauri::command]
+pub async fn delete_session(
+    session_id: String,
+    db: State<'_, DatabaseManager>,
+) -> Result<(), AppError> {
+    let repo = SessionRepository::new(&db);
+    repo.delete_session(&session_id)
+}
+

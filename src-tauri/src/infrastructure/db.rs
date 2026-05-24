@@ -3,12 +3,14 @@ use std::path::Path;
 use std::sync::Mutex;
 
 pub struct DatabaseManager {
-    pub(crate) conn: Mutex<Connection>,
+    pub conn: Mutex<Connection>,
 }
 
 impl DatabaseManager {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
         let conn = Connection::open(path)?;
+
+        conn.execute("PRAGMA foreign_keys = ON;", [])?;
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS sessions (

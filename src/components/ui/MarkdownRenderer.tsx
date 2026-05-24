@@ -151,7 +151,7 @@ interface MarkdownRendererProps {
 export const MarkdownRenderer = ({ content, theme = 'offline' }: MarkdownRendererProps) => {
   if (!content) return null;
 
-  const themeColorClass = theme === 'offline' ? 'text-offline-core' : 'text-jarvis-blue';
+  const themeColorClass = theme === 'offline' ? 'text-offline-core' : 'text-theme-accent';
 
   // Pre-process LaTeX delimiters: replace \[ ... \] with $$ ... $$ and \( ... \) with $ ... $
   let processed = content;
@@ -238,7 +238,7 @@ export const MarkdownRenderer = ({ content, theme = 'offline' }: MarkdownRendere
             checked={checked}
             readOnly
             className={`mt-1 mr-2 shrink-0 ${
-              theme === 'offline' ? 'accent-offline-core' : 'accent-jarvis-blue'
+              theme === 'offline' ? 'accent-offline-core' : 'accent-theme-accent'
             }`}
             {...props}
           />

@@ -1,6 +1,6 @@
 import { useEffect, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cpu, User, FileText } from 'lucide-react';
+import { Cpu, User, FileText, X } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { MCPLoading } from '@/features/mcp/components/MCPLoading';
 
@@ -13,6 +13,7 @@ export interface Message {
 interface MCPMessageLogProps {
   messages: Message[];
   isThinking?: boolean;
+  onClose?: () => void;
 }
 
 interface OnlineMessageItemProps {
@@ -117,11 +118,35 @@ export const MCPMessageLog = ({ messages, isThinking = false }: MCPMessageLogPro
   if (messages.length === 0 && !isThinking) return null;
 
   return (
-    <div className="flex-1 w-full overflow-hidden flex flex-col min-h-0">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+      // Sits right above the prompt bar, full width up to max-5xl
+      className="w-full max-w-5xl mb-4 bg-theme-surface-1 backdrop-blur-2xl border border-theme-border rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col pointer-events-auto"
+      style={{ maxHeight: '65vh' }}
+    >
+      {/* Header */}
+      <div className="px-4 py-2 border-b border-white/5 flex justify-between items-center bg-black/20 select-none">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-theme-accent animate-pulse" />
+          <span className="text-[10px] font-mono text-theme-accent uppercase tracking-widest font-bold">Uplink_History</span>
+        </div>
+        {onClose && (
+          <button 
+            onClick={onClose}
+            className="text-secondary-txt hover:text-white transition-colors cursor-pointer"
+            title="Hide History"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
       {/* Message List */}
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto px-6 py-8 custom-scrollbar flex flex-col gap-6 max-w-5xl mx-auto w-full"
+        className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar flex flex-col gap-6"
       >
         {messages.map((msg) => (
           <OnlineMessageItem key={msg.id} msg={msg} />
@@ -163,6 +188,6 @@ export const MCPMessageLog = ({ messages, isThinking = false }: MCPMessageLogPro
         {/* Invisible div to scroll to */}
         <div ref={bottomRef} className="h-4" />
       </div>
-    </div>
+    </motion.div>
   );
 };

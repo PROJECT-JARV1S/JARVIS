@@ -24,9 +24,14 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // Apply theme class to body/html tag
+    // Apply theme class to both html and body tags to ensure all variables cascade correctly
+    const root = document.documentElement;
     const body = document.body;
+    
+    root.classList.remove('theme-jarvis', 'theme-cyberpunk', 'theme-amber');
     body.classList.remove('theme-jarvis', 'theme-cyberpunk', 'theme-amber');
+    
+    root.classList.add(`theme-${theme}`);
     body.classList.add(`theme-${theme}`);
   }, [theme]);
 

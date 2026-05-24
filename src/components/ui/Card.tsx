@@ -26,7 +26,7 @@ export const Card = ({
           ? 'bg-surface-1/40 backdrop-blur-md border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.2)]' 
           : 'bg-surface-1 border border-surface-3'
         }
-        ${glow ? 'shadow-[0_0_15px_rgba(0,240,255,0.05)] border-jarvis-blue/30' : ''}
+        ${glow ? 'shadow-[0_0_15px_rgba(var(--theme-accent-rgb),0.05)] border-theme-accent/30' : ''}
         ${className}
       `}
       {...props}
@@ -39,8 +39,8 @@ export const Card = ({
       {/* 2. HUD Corner Accents */}
       {cornerAccents && (
         <>
-          <div className="absolute -top-px -left-px w-4 h-4 border-t-2 border-l-2 border-jarvis-blue/50 rounded-tl-lg pointer-events-none z-10" />
-          <div className="absolute -bottom-px -right-px w-4 h-4 border-b-2 border-r-2 border-jarvis-blue/50 rounded-br-lg pointer-events-none z-10" />
+          <div className="absolute -top-px -left-px w-4 h-4 border-t-2 border-l-2 border-theme-accent/50 rounded-tl-lg pointer-events-none z-10" />
+          <div className="absolute -bottom-px -right-px w-4 h-4 border-b-2 border-r-2 border-theme-accent/50 rounded-br-lg pointer-events-none z-10" />
         </>
       )}
 
@@ -48,7 +48,7 @@ export const Card = ({
       {title && (
         <div className="px-5 pt-5 pb-3 border-b border-white/5 flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3">
-            <div className={`w-2 h-2 rounded-sm ${glow ? 'bg-jarvis-blue shadow-[0_0_8px_#00F0FF]' : 'bg-surface-3'}`} />
+            <div className={`w-2 h-2 rounded-sm ${glow ? 'bg-theme-accent shadow-[0_0_8px_var(--theme-accent)]' : 'bg-surface-3'}`} />
             <div>
               <h3 className="text-primary-txt font-sans text-xs font-semibold tracking-wider uppercase">
                 {title}

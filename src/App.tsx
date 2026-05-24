@@ -64,7 +64,7 @@ function App() {
   }, []);
 
   return (
-    <div className="bg-black min-h-screen w-full overflow-hidden relative selection:bg-jarvis-blue/30">
+    <div className="bg-black min-h-screen w-full overflow-hidden relative selection:bg-theme-accent/30">
       <AnimatePresence mode="wait">
         
         {/* PHASE 1: THE CINEMATIC INTRO */}

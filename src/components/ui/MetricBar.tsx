@@ -13,7 +13,7 @@ export const MetricBar = ({
   label, 
   value, 
   isWarning = false,
-  baseColorClass = "bg-jarvis-blue text-jarvis-blue"
+  baseColorClass = "bg-theme-accent text-theme-accent"
 }: MetricBarProps) => {
   const textColor = isWarning ? "text-error-red" : baseColorClass.split(' ')[1];
   const bgColor = isWarning ? "bg-error-red" : baseColorClass.split(' ')[0];

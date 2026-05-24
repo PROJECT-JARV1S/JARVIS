@@ -5,7 +5,6 @@ pub mod infrastructure;
 
 use crate::commands::chat::*;
 use crate::commands::config::*;
-use crate::commands::skills::*;
 use crate::commands::system::*;
 use crate::commands::voice::*;
 use tauri::Manager;
@@ -65,15 +64,14 @@ pub fn run() {
             create_session,
             list_sessions,
             get_history,
+            rename_session,
+            delete_session,
             get_chat_providers,
             set_chat_provider,
             // Voice (jarvis-transcriber, pure Rust)
             start_voice_listener,
             stop_voice_listener,
             get_voice_status,
-            // Skills (jarvis-skills MCP — stubs)
-            get_device_info,
-            list_skills,
             // System Telemetry
             get_system_info,
         ])

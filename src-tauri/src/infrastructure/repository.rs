@@ -126,4 +126,56 @@ impl<'a> SessionRepository<'a> {
         }
         Ok(sessions)
     }
+
+    /// Renames a chat session.
+    ///
+    /// # Arguments
+    ///
+    /// * `session_id` - The unique identifier of the session to rename.
+    /// * `title` - The new title to assign to the session.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on success, or an [`AppError`] on failure.
+    pub fn rename_session(&self, session_id: &str, title: &str) -> Result<(), AppError> {
+        let now = chrono::Utc::now().timestamp();
+        let conn = self
+            .db
+            .conn
+            .lock()
+            .map_err(|e| AppError::LockError(format!("Database lock error: {}", e)))?;
+
+        conn.execute(
+            "UPDATE sessions SET title = ?1, updated_at = ?2 WHERE id = ?3",
+            params![title, now, session_id],
+        )
+        .map_err(|e| AppError::SystemError(format!("Failed to rename session: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Deletes a chat session and all its associated history.
+    ///
+    /// # Arguments
+    ///
+    /// * `session_id` - The unique identifier of the session to delete.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on success, or an [`AppError`] on failure.
+    pub fn delete_session(&self, session_id: &str) -> Result<(), AppError> {
+        let conn = self
+            .db
+            .conn
+            .lock()
+            .map_err(|e| AppError::LockError(format!("Database lock error: {}", e)))?;
+
+        conn.execute(
+            "DELETE FROM sessions WHERE id = ?1",
+            params![session_id],
+        )
+        .map_err(|e| AppError::SystemError(format!("Failed to delete session: {}", e)))?;
+
+        Ok(())
+    }
 }

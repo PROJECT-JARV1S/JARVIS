@@ -1,6 +1,5 @@
 use jarvis_lib::domain::config::AppConfig;
 use jarvis_lib::infrastructure::db::DatabaseManager;
-use rig::message::Message;
 use std::fs;
 
 #[test]
@@ -49,6 +48,33 @@ fn test_database_manager() {
     let sessions = repo.get_all_sessions().unwrap();
     assert_eq!(sessions.len(), 1);
     assert_eq!(sessions[0].title, Some("Test Session".to_string()));
+
+    // Verify row exists in session_history
+    {
+        let conn = db.conn.lock().unwrap();
+        let count: i32 = conn.query_row("SELECT COUNT(*) FROM session_history", [], |r| r.get(0)).unwrap();
+        assert_eq!(count, 1);
+    }
+
+    // Rename session
+    repo.rename_session(&session_id, "Renamed Session").unwrap();
+    let sessions = repo.get_all_sessions().unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].title, Some("Renamed Session".to_string()));
+
+    // Delete session
+    repo.delete_session(&session_id).unwrap();
+
+    // Verify session is gone from sessions
+    let sessions = repo.get_all_sessions().unwrap();
+    assert!(sessions.is_empty());
+
+    // Verify history row is cascade deleted from session_history
+    {
+        let conn = db.conn.lock().unwrap();
+        let count: i32 = conn.query_row("SELECT COUNT(*) FROM session_history", [], |r| r.get(0)).unwrap();
+        assert_eq!(count, 0);
+    }
 
     // Clean up
     let _ = fs::remove_file(db_path);

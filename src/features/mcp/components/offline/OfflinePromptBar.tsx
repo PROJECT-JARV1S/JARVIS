@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Shield, Loader2, Mic, X, Command } from 'lucide-react';
+import { Send, Shield, Loader2, Mic, X, Command, Paperclip, FileText } from 'lucide-react';
 import { useVoice } from '@/context/VoiceContext';
 import { useNeuralFrequency } from '@/hooks/useNeuralFrequency';
+import { open } from '@tauri-apps/plugin-dialog';
 
 interface Props {
   input: string;
   setInput: (val: string) => void;
-  onSend: (overrideText?: string) => void;
+  onSend: (overrideText?: string, attachments?: string[]) => void;
   disabled?: boolean;
 }
 
@@ -63,6 +64,12 @@ const VoiceWaveform = ({ volume }: { volume: number }) => {
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
+interface AttachedFile {
+  id: string;
+  path: string;
+  name: string;
+}
+
 export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) => {
   const { status, transcript, startListening, stopListening } = useVoice();
   const volume = useNeuralFrequency(status === 'LISTENING');
@@ -71,6 +78,51 @@ export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) =
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [selectedSlashIdx, setSelectedSlashIdx] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+
+  const handleAttachClick = async () => {
+    try {
+      const selected = await open({
+        multiple: true,
+        filters: [{
+          name: 'Documents',
+          extensions: ['txt', 'md', 'pdf']
+        }]
+      });
+
+      if (!selected) return; // User cancelled
+      
+      const paths = Array.isArray(selected) ? selected : [selected];
+      const newFiles: AttachedFile[] = [];
+
+      for (const selectedPath of paths) {
+        if (attachedFiles.some(f => f.path === selectedPath)) continue;
+
+        const fileName = selectedPath.split(/[/\\]/).pop() || selectedPath;
+        newFiles.push({
+          id: `${selectedPath}-${Date.now()}-${Math.random()}`,
+          path: selectedPath,
+          name: fileName
+        });
+      }
+
+      if (newFiles.length > 0) {
+        setAttachedFiles(prev => [...prev, ...newFiles]);
+      }
+    } catch (err) {
+      console.error("Failed to select file:", err);
+    }
+  };
+
+  const removeFile = (id: string) => {
+    setAttachedFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const handleSendClick = () => {
+    const paths = attachedFiles.map(f => f.path);
+    onSend(undefined, paths);
+    setAttachedFiles([]); // Clear attachments
+  };
 
   // ── Voice transcript handling ──
   useEffect(() => {
@@ -85,11 +137,13 @@ export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) =
       lastProcessedTranscript.current = transcript;
       
       if (wasListening.current) {
-        onSend(transcript);
+        const paths = attachedFiles.map(f => f.path);
+        onSend(transcript, paths);
+        setAttachedFiles([]);
         wasListening.current = false;
       }
     }
-  }, [transcript, setInput, onSend]);
+  }, [transcript, setInput, onSend, attachedFiles]);
 
   // ── Slash command filtering ──
   const slashQuery = useMemo(() => {
@@ -146,8 +200,8 @@ export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) =
     // Normal send
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!disabled && input.trim()) {
-        onSend();
+      if (!disabled && (input.trim() || attachedFiles.length > 0)) {
+        handleSendClick();
       }
     }
   };
@@ -196,6 +250,38 @@ export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) =
             : 'border-offline-border focus-within:border-offline-core/50 focus-within:shadow-[0_0_20px_rgba(var(--color-offline-core-rgb),0.08)] focus-within:ring-1 focus-within:ring-offline-core/30'
           }`}
         >
+          {/* Attached Files List */}
+          <AnimatePresence>
+            {attachedFiles.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex flex-wrap gap-2 pb-3 mb-2 border-b border-white/5"
+              >
+                {attachedFiles.map(file => (
+                  <motion.div
+                    key={file.id}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-secondary-txt text-xs font-mono select-none backdrop-blur-md transition-all hover:bg-white/10"
+                    title={file.path}
+                  >
+                    <FileText size={12} className="opacity-75" />
+                    <span className="max-w-[150px] truncate">{file.name}</span>
+                    <button
+                      onClick={() => removeFile(file.id)}
+                      className="p-0.5 rounded hover:bg-white/10 text-tertiary-txt hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X size={12} />
+                    </button>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* ── Inline Voice Waveform (replaces textarea when LISTENING) ── */}
           <AnimatePresence mode="wait">
             {status === 'LISTENING' ? (
@@ -204,7 +290,7 @@ export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) =
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center h-14 pr-[110px]"
+                className="flex items-center h-14 pr-[150px]"
               >
                 <div className="flex items-center gap-3 flex-1">
                   <div className="flex items-center gap-2">
@@ -234,7 +320,7 @@ export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) =
                     ? "JARVIS_IS_THINKING..." 
                     : "Execute local MCP command... (type / for commands)"
                   }
-                  className={`w-full bg-transparent border-none focus:outline-none text-[15px] font-sans resize-none h-14 pr-[110px] text-primary-txt placeholder:text-tertiary-txt transition-colors
+                  className={`w-full bg-transparent border-none focus:outline-none text-[15px] font-sans resize-none h-14 pr-[150px] text-primary-txt placeholder:text-tertiary-txt transition-colors
                     ${disabled ? 'text-offline-core/40' : 'text-primary-txt'}
                   `}
                 />
@@ -245,6 +331,17 @@ export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) =
           {/* --- RIGHT ACTIONS: VOICE & SEND --- */}
           <div className="absolute right-4 bottom-4 flex items-center gap-2">
             
+            {/* Document Attachment Button */}
+            <button 
+              type="button"
+              onClick={handleAttachClick}
+              disabled={disabled}
+              title="Attach document (.txt, .md, .pdf)"
+              className="p-3 rounded-xl bg-white/5 text-secondary-txt hover:bg-white/10 hover:text-white transition-all disabled:opacity-20 shadow-[0_0_20px_rgba(0,0,0,0.1)] cursor-pointer"
+            >
+              <Paperclip size={20} />
+            </button>
+
             {/* Voice Activation Toggle */}
             <button 
               onClick={() => status === 'IDLE' ? startListening() : stopListening()}
@@ -258,17 +355,17 @@ export const OfflinePromptBar = ({ input, setInput, onSend, disabled }: Props) =
                   : 'bg-white/5 text-secondary-txt hover:bg-white/10 hover:text-white'
                 }`}
             >
-              {status === 'WAKING' ? <Loader2 size={20} className="animate-spin" /> : status !== 'IDLE' ? <X size={20} /> : <Mic size={20} />}
+              {status === 'WAKING' ? <Loader2 size={20} className="animate-spin" /> : status !== 'IDLE' ? <X size={18} /> : <Mic size={18} />}
             </button>
  
             {/* Manual Send / Loading Indicator */}
             <button 
-              onClick={() => onSend()}
-              disabled={disabled || !input.trim()}
+              onClick={handleSendClick}
+              disabled={disabled || (!input.trim() && attachedFiles.length === 0)}
               title="Execute Command"
-              className="p-3 rounded-xl bg-offline-core text-offline-bg hover:scale-105 active:scale-95 transition-all disabled:opacity-20 disabled:grayscale disabled:hover:scale-100 shadow-[0_0_20px_rgba(var(--color-offline-core-rgb),0.3)]"
+              className="p-3 rounded-xl bg-offline-core text-offline-bg hover:scale-105 active:scale-95 transition-all disabled:opacity-20 disabled:grayscale disabled:hover:scale-100 shadow-[0_0_20px_rgba(var(--color-offline-core-rgb),0.3)] cursor-pointer"
             >
-              {disabled ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+              {disabled ? <Loader2 size={20} className="animate-spin" /> : <Send size={18} />}
             </button>
           </div>
         </div>

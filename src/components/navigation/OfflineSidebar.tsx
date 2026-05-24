@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import JarvisIcon from '@/assets/jarvislogofinal.svg';
-import { Settings, ChevronFirst, ChevronLast, Terminal, Plus, MessageSquare, Edit2, Trash2 } from 'lucide-react';
+import { Settings, ChevronFirst, ChevronLast, Terminal, Plus, MessageSquare, Edit2, Trash2, Check, X } from 'lucide-react';
 import { useSession } from '@/context/SessionContext';
 
 interface OfflineSidebarProps {
@@ -31,8 +31,10 @@ export const OfflineSidebar = ({ onSettingsClick }: OfflineSidebarProps) => {
 
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
 
   const startEdit = (sessionId: string, currentTitle: string) => {
+    setDeletingSessionId(null);
     setEditingSessionId(sessionId);
     setEditTitle(currentTitle);
   };
@@ -51,12 +53,6 @@ export const OfflineSidebar = ({ onSettingsClick }: OfflineSidebarProps) => {
       handleSave(sessionId);
     } else if (e.key === 'Escape') {
       setEditingSessionId(null);
-    }
-  };
-
-  const handleDeleteClick = async (sessionId: string) => {
-    if (window.confirm("Are you sure you want to delete this session? All history will be lost.")) {
-      await deleteSession(sessionId);
     }
   };
 
@@ -253,25 +249,49 @@ export const OfflineSidebar = ({ onSettingsClick }: OfflineSidebarProps) => {
                               </div>
                             </div>
                             
-                            {/* Actions on Hover */}
+                            {/* Actions on Hover / Confirm Delete */}
                             <div 
-                              className="hidden group-hover:flex items-center gap-1 shrink-0" 
+                              className={`${deletingSessionId === session.id ? 'flex animate-pulse' : 'hidden group-hover:flex'} items-center gap-1 shrink-0`} 
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <button
-                                onClick={() => startEdit(session.id, title)}
-                                className="text-secondary-txt/40 hover:text-offline-core p-1 transition-colors rounded hover:bg-white/5 cursor-pointer"
-                                title="Rename Session"
-                              >
-                                <Edit2 size={11} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(session.id)}
-                                className="text-secondary-txt/40 hover:text-red-500/80 p-1 transition-colors rounded hover:bg-white/5 cursor-pointer"
-                                title="Delete Session"
-                              >
-                                <Trash2 size={11} />
-                              </button>
+                              {deletingSessionId === session.id ? (
+                                <div className="flex items-center gap-1 bg-red-500/10 border border-red-500/20 rounded px-1 py-0.5">
+                                  <button
+                                    onClick={() => {
+                                      deleteSession(session.id);
+                                      setDeletingSessionId(null);
+                                    }}
+                                    className="text-red-500 hover:text-red-400 p-0.5 transition-colors rounded hover:bg-white/5 cursor-pointer"
+                                    title="Confirm Delete"
+                                  >
+                                    <Check size={11} />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingSessionId(null)}
+                                    className="text-secondary-txt/40 hover:text-white p-0.5 transition-colors rounded hover:bg-white/5 cursor-pointer"
+                                    title="Cancel"
+                                  >
+                                    <X size={11} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => startEdit(session.id, title)}
+                                    className="text-secondary-txt/40 hover:text-offline-core p-1 transition-colors rounded hover:bg-white/5 cursor-pointer"
+                                    title="Rename Session"
+                                  >
+                                    <Edit2 size={11} />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingSessionId(session.id)}
+                                    className="text-secondary-txt/40 hover:text-red-500/80 p-1 transition-colors rounded hover:bg-white/5 cursor-pointer"
+                                    title="Delete Session"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </>
                         )}

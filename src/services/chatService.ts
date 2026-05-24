@@ -6,13 +6,13 @@ const isTauri = () => {
 };
 
 // Simulated mock responses for web browser testing
-const MOCK_ANSWERS = [
-  "Core uplink established. All diagnostics report nominal status.",
-  "Understood. Initiating telemetry sweeps on connected nodes...",
-  "Acknowledged. Routing command through active gateway.",
-  "Grid sync protocols established. Waiting for additional instructions.",
-  "Diagnostics complete. Thermal output is within optimal thresholds (34°C).",
-];
+// const MOCK_ANSWERS = [
+//   "Core uplink established. All diagnostics report nominal status.",
+//   "Understood. Initiating telemetry sweeps on connected nodes...",
+//   "Acknowledged. Routing command through active gateway.",
+//   "Grid sync protocols established. Waiting for additional instructions.",
+//   "Diagnostics complete. Thermal output is within optimal thresholds (34°C).",
+// ];
 
 // ─── LocalStorage Mocks for Browser/Web Sandbox ─────────────────────────────
 const MOCK_SESSIONS_KEY = "jarvis_mock_sessions";
@@ -45,12 +45,19 @@ const saveMockHistory = (sessionId: string, history: RigMessage[]) => {
 
 // ─── Chat Prompt ────────────────────────────────────────────────────────────
 
-export const sendPrompt = async (sessionId: string, input: string): Promise<ChatResponse> => {
+export const sendPrompt = async (
+  sessionId: string, 
+  input: string, 
+  attachments?: string[] // Array of absolute file paths
+): Promise<ChatResponse> => {
   if (!isTauri()) {
     console.info("[chatService] Non-Tauri environment, using local storage mock.");
     await new Promise(r => setTimeout(r, 600)); // Simulate thinking latency
-    const randomAnswer = MOCK_ANSWERS[Math.floor(Math.random() * MOCK_ANSWERS.length)];
-    const reply = `[SIMULATOR] ${randomAnswer}`;
+    
+    let reply = `[SIMULATOR] Core uplink established. I have received your prompt.`;
+    if (attachments && attachments.length > 0) {
+      reply = `[SIMULATOR] I noticed the following attached file path(s): ${attachments.join(", ")}. In a Tauri environment, the agent will read these paths using its ReadDocumentTool.`;
+    }
 
     // Append to local history mock
     const history = getMockHistory(sessionId);
@@ -73,7 +80,11 @@ export const sendPrompt = async (sessionId: string, input: string): Promise<Chat
       provider: "simulator"
     };
   }
-  return await invoke<ChatResponse>("prompt", { sessionId, input });
+  return await invoke<ChatResponse>("prompt", { 
+    sessionId, 
+    input, 
+    attachments: attachments || null 
+  });
 };
 
 // ─── Session Management ─────────────────────────────────────────────────────

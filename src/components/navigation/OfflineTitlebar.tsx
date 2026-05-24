@@ -1,4 +1,4 @@
-import { Shield, HardDrive, Lock } from 'lucide-react';
+import { Shield, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSystemInfo } from '@/hooks/useSystemInfo';
 import { NeuralCore } from '@/features/mcp/components/NeuralCore'; 
@@ -64,18 +64,43 @@ export const OfflineTitlebar = () => {
         </div>
       </div>
       
-      {/* Center-Right: Telemetry & Neural Core */}
-      <div className="flex items-center gap-8 z-10">
-        <div className="flex items-center gap-6 border-r border-white/5 pr-6">
-          <div className="flex items-center gap-2.5 group">
-            <HardDrive size={14} className="text-offline-core/60 group-hover:text-offline-core transition-colors" />
-            <div className="text-xs font-mono text-secondary-txt uppercase">
-              Disk <span className="text-primary-txt ml-1 font-bold">{systemInfo ? Math.round(systemInfo.disk_usage) : '--'}%</span>
-            </div>
-          </div>
+      {/* Center: System Telemetry Animation (Fills negative space) */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex items-center gap-4 z-10 pointer-events-none">
+        {/* Animated Scan Indicator */}
+        <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.02] border border-white/5 rounded font-mono text-[10px] text-offline-core/55 tracking-wider">
+          <span className="w-1.5 h-1.5 rounded-full bg-offline-core/50 animate-ping" />
+          SYS_SECURE: <span className="text-offline-core font-bold animate-pulse">ACTIVE_SHIELD</span>
+        </div>
+        
+        {/* Animated Telemetry Frequency Wave */}
+        <div className="flex items-end gap-[3px] h-4">
+          {[0.6, 0.4, 0.9, 0.3, 0.7, 0.5, 0.8, 0.4, 0.6, 0.3, 0.5, 0.9, 0.4, 0.7, 0.5].map((multiplier, idx) => (
+            <motion.div
+              key={idx}
+              animate={{ 
+                height: [
+                  `${multiplier * 4}px`, 
+                  `${multiplier * 14}px`, 
+                  `${multiplier * 4}px`
+                ] 
+              }}
+              transition={{
+                duration: 1.0 + idx * 0.12,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="w-[2px] bg-offline-core/35 rounded-t"
+            />
+          ))}
         </div>
 
-
+        <div className="text-[10px] font-mono text-offline-core/40 tracking-widest hidden xl:block uppercase">
+          // AIR_LINK_SECURE_MODE_01
+        </div>
+      </div>
+      
+      {/* Right: Telemetry, Time & Profile */}
+      <div className="flex items-center gap-6 z-10">
         {/* NEURAL CORE: Integrated Visualizer */}
         <div className="h-10 w-20 flex items-center justify-center">
           <div className="scale-[0.4] origin-center">
@@ -83,16 +108,13 @@ export const OfflineTitlebar = () => {
           </div>
         </div>
 
-        <div className="text-xs font-mono text-primary-txt uppercase tracking-tight border-l border-white/5 pl-6">
+        <div className="text-xs font-mono text-primary-txt uppercase tracking-tight border-l border-white/5 pl-6 hidden sm:block">
           <span className="text-secondary-txt opacity-50 mr-2">TIME:</span>
           {formattedTime}
         </div>
-      </div>
-      
-      {/* Right: Security & Admin */}
-      <div className="flex items-center gap-5 z-10">
+
         {/* Status Badge */}
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded hover:border-offline-core/40 transition-all cursor-help group">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded hover:border-offline-core/40 transition-all cursor-help group hidden md:flex">
           <Lock size={14} className="text-offline-core/80 group-hover:animate-bounce" />
           <span className="text-[10px] font-mono text-white/60 uppercase tracking-widest">
             SECURE_HASH

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cpu, User, ChevronDown } from 'lucide-react';
+import { Cpu, User, ChevronDown, FileText } from 'lucide-react';
 import { Message } from '@/context/SessionContext';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 
@@ -69,7 +69,45 @@ export const OfflineChatHistory = ({ messages }: { messages: Message[] }) => {
                       SYS_OK
                     </span>
                   </div>
-                  <MarkdownRenderer content={msg.text} theme="offline" />
+                  {(() => {
+                    const lines = msg.text.split('\n');
+                    const attachmentPaths: string[] = [];
+                    const contentLines: string[] = [];
+
+                    for (const line of lines) {
+                      const match = line.match(/^\[Attached:\s*(.+)\]$/);
+                      if (match) {
+                        attachmentPaths.push(match[1]);
+                      } else {
+                        contentLines.push(line);
+                      }
+                    }
+
+                    const cleanText = contentLines.join('\n').trim();
+
+                    return (
+                      <div className="flex flex-col gap-2">
+                        {attachmentPaths.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-1">
+                            {attachmentPaths.map((path, idx) => {
+                              const fileName = path.split(/[/\\]/).pop() || path;
+                              return (
+                                <div 
+                                  key={idx}
+                                  className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/10 text-[11px] font-mono text-secondary-txt"
+                                  title={path}
+                                >
+                                  <FileText size={10} />
+                                  <span>{fileName}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {cleanText && <MarkdownRenderer content={cleanText} theme="offline" />}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </motion.div>

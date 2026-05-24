@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Send, X, Mic, Terminal } from 'lucide-react';
+import { ChevronLeft, Send, X, Mic, Terminal, Paperclip, FileText } from 'lucide-react';
 import { MCPMessageLog, Message } from './MCPMessageLog'; 
 import { useVoice } from '@/context/VoiceContext'; 
 import { NeuralCore } from '@/features/mcp/components/NeuralCore';
 import { sendPrompt, createSession } from '@/services/chatService';
 import { useNeuralFrequency } from '@/hooks/useNeuralFrequency';
+import { open } from '@tauri-apps/plugin-dialog';
 
 // ─── Voice Waveform Visualizer (Online Theme Matcher) ──────────────────────
 const VoiceWaveform = ({ volume }: { volume: number }) => {
@@ -43,24 +44,56 @@ export const MCPTerminal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [showHistory, setShowHistory] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Initialize a chat session on mount
-  useEffect(() => {
-    const initSession = async () => {
-      try {
-        const id = await createSession("MCP Terminal");
-        setSessionId(id);
-      } catch (err) {
-        console.error("Failed to create MCP terminal session:", err);
-      }
-    };
-    initSession();
-  }, []);
-  
   // Use a ref to track if we've already sent the current transcript
   const lastProcessedTranscript = useRef('');
+
+  interface AttachedFile {
+    id: string;
+    path: string;
+    name: string;
+  }
+
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+
+  const handleAttachClick = async () => {
+    try {
+      const selected = await open({
+        multiple: true,
+        filters: [{
+          name: 'Documents',
+          extensions: ['txt', 'md', 'pdf']
+        }]
+      });
+
+      if (!selected) return; // User cancelled
+      
+      const paths = Array.isArray(selected) ? selected : [selected];
+      const newFiles: AttachedFile[] = [];
+
+      for (const selectedPath of paths) {
+        if (attachedFiles.some(f => f.path === selectedPath)) continue;
+
+        const fileName = selectedPath.split(/[/\\]/).pop() || selectedPath;
+        newFiles.push({
+          id: `${selectedPath}-${Date.now()}-${Math.random()}`,
+          path: selectedPath,
+          name: fileName
+        });
+      }
+
+      if (newFiles.length > 0) {
+        setAttachedFiles(prev => [...prev, ...newFiles]);
+      }
+    } catch (err) {
+      console.error("Failed to select file:", err);
+    }
+  };
+
+  const removeFile = (id: string) => {
+    setAttachedFiles(prev => prev.filter(f => f.id !== id));
+  };
 
   // 🏛️ 1. AUTOMATIC SEND LOGIC
   // When the transcriber finishes (transcript arrives), if we're open, send it.
@@ -81,14 +114,21 @@ export const MCPTerminal = () => {
 
   const handleSend = async (overrideText?: string) => {
     const textToSend = (overrideText || input).trim();
-    if (!textToSend) return;
+    const paths = attachedFiles.map(f => f.path);
+    if (!textToSend && paths.length === 0) return;
+
+    let displayMessage = textToSend;
+    if (paths.length > 0) {
+      const attachmentsHeader = paths.map(p => `[Attached: ${p}]`).join('\n');
+      displayMessage = `${attachmentsHeader}\n${textToSend}`;
+    }
     
     // Add User Message
-    setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user', text: textToSend }]);
+    setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user', text: displayMessage }]);
     
-    // RESET INPUT
+    // RESET INPUT & ATTACHMENTS
     setInput('');
-    setShowHistory(true);
+    setAttachedFiles([]);
     setStatus('THINKING');
     
     // Ensure voice is stopped
@@ -98,10 +138,10 @@ export const MCPTerminal = () => {
       // Ensure we have a session, create one on-the-fly if needed
       let sid = sessionId;
       if (!sid) {
-        sid = await createSession("MCP Terminal");
+        sid = await createSession(textToSend.substring(0, 30) || "Document Query");
         setSessionId(sid);
       }
-      const response = await sendPrompt(sid, textToSend);
+      const response = await sendPrompt(sid, textToSend, paths);
       
       setMessages(prev => [...prev, { 
         id: Date.now().toString(), 
@@ -123,138 +163,211 @@ export const MCPTerminal = () => {
   const scale = 1 + (frequency / 100) * 0.6; // Scale factor for voice rings
 
   return (
-    <>
-      <div className="fixed bottom-12 left-0 right-0 z-[100] flex flex-col items-center justify-end px-8 pointer-events-none">
-        <AnimatePresence mode="wait">
-          {isOpen ? (
-            <motion.div 
-              key="prompt-wrapper" 
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 30, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-full max-w-5xl flex flex-col items-center pointer-events-none"
+    <AnimatePresence mode="wait">
+      {isOpen ? (
+        <motion.div 
+          key="terminal-overlay" 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 15 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+          className="fixed inset-0 z-[100] flex flex-col bg-theme-bg/85 backdrop-blur-2xl pointer-events-auto"
+        >
+          {/* Header */}
+          <div className="h-16 border-b border-theme-border flex items-center justify-between px-8 bg-black/25 shrink-0 select-none">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-theme-accent shadow-[0_0_8px_var(--theme-accent)] animate-pulse" />
+              <span className="font-mono text-xs text-theme-accent uppercase tracking-[0.2em] font-bold">
+                JARVIS_ONLINE_CORE // MCP_NEURAL_UPLINK
+              </span>
+            </div>
+            <button 
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-theme-accent/20 bg-theme-accent/5 hover:bg-theme-accent/20 text-theme-accent text-xs font-mono tracking-widest uppercase transition-all cursor-pointer"
+              title="Minimize Console"
             >
+              <ChevronLeft size={16} />
+              MINIMIZE
+            </button>
+          </div>
+
+          {/* Chat History / Message Log */}
+          <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+            <MCPMessageLog 
+              messages={messages} 
+              isThinking={status === 'THINKING'}
+            />
+          </div>
+
+          {/* Prompt Bar / Input */}
+          <div className="w-full max-w-5xl mx-auto px-6 pb-8 pt-4 shrink-0">
+            {/* Attached Files List */}
+            <AnimatePresence>
+              {attachedFiles.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="w-full flex flex-wrap gap-2 px-6 pb-3 mb-2 border-b border-white/5 justify-start"
+                >
+                  {attachedFiles.map(file => (
+                    <motion.div
+                      key={file.id}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.8, opacity: 0 }}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-secondary-txt text-xs font-mono select-none backdrop-blur-md transition-all hover:bg-white/10"
+                      title={file.path}
+                    >
+                      <FileText size={12} className="opacity-75" />
+                      <span className="max-w-[150px] truncate">{file.name}</span>
+                      <button
+                        onClick={() => removeFile(file.id)}
+                        className="p-0.5 rounded hover:bg-white/10 text-tertiary-txt hover:text-white transition-colors cursor-pointer"
+                      >
+                        <X size={12} />
+                      </button>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className={`w-full transition-all duration-500 bg-theme-surface-1 backdrop-blur-3xl border rounded-full p-2 flex items-center
+              ${status === 'LISTENING' ? 'border-theme-accent shadow-[0_0_30px_rgba(var(--theme-accent-rgb),0.2)]' : 
+                status === 'THINKING' ? 'border-success-green animate-pulse shadow-[0_0_20px_rgba(0,255,102,0.1)]' :
+                'border-theme-border'}
+            `}>
               
-              <AnimatePresence>
-                {showHistory && messages.length > 0 && (
-                  <MCPMessageLog messages={messages} onClose={() => setShowHistory(false)} />
+              {/* MINIMIZE */}
+              <button 
+                onClick={() => setIsOpen(false)} 
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-secondary-txt ml-1 cursor-pointer"
+                title="Minimize"
+              >
+                <ChevronLeft size={20} />
+              </button>
+
+              <span className={`${status === 'THINKING' ? 'text-success-green' : 'text-theme-accent'} font-mono font-bold mx-3`}>{'>'}</span>
+              
+              <AnimatePresence mode="wait">
+                {status === 'LISTENING' ? (
+                  <motion.div
+                    key="listening-waveform"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="flex-1 flex items-center gap-3 h-10"
+                  >
+                    <span className="text-[11px] font-mono text-theme-accent uppercase tracking-[0.2em] animate-pulse">
+                      Listening
+                    </span>
+                    <VoiceWaveform volume={frequency} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="input-box"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    className="flex-1"
+                  >
+                    <input
+                      autoFocus
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (input.trim() || attachedFiles.length > 0) {
+                            handleSend();
+                          }
+                        }
+                      }}
+                      placeholder={
+                        status === 'THINKING' ? "JARVIS is thinking..." : 
+                        "Initialize command..."
+                      }
+                      disabled={status === 'THINKING'}
+                      className="w-full bg-transparent border-none focus:outline-none text-primary-txt font-mono text-sm placeholder:text-primary-txt/20 disabled:opacity-50"
+                    />
+                  </motion.div>
                 )}
               </AnimatePresence>
 
-              <div className="w-full flex flex-col items-center pointer-events-auto">
-                <div className={`w-full transition-all duration-500 bg-theme-surface-1 backdrop-blur-3xl border rounded-full p-2 flex items-center
-                  ${status === 'LISTENING' ? 'border-theme-accent shadow-[0_0_30px_rgba(var(--theme-accent-rgb),0.2)]' : 
-                    status === 'THINKING' ? 'border-success-green animate-pulse shadow-[0_0_20px_rgba(0,255,102,0.1)]' :
-                    'border-theme-border'}
-                `}>
-                  
-                  {/* MINIMIZE */}
-                  <button onClick={() => setIsOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-secondary-txt ml-1">
-                    <ChevronLeft size={20} />
+              {/* VOICE TOGGLE & SEND */}
+              <div className="flex items-center gap-2 pr-1">
+                
+                {/* Document Attachment Button */}
+                <button 
+                  type="button"
+                  onClick={handleAttachClick}
+                  disabled={status === 'THINKING'}
+                  title="Attach document (.txt, .md, .pdf)"
+                  className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-secondary-txt transition-all disabled:opacity-20 cursor-pointer"
+                >
+                  <Paperclip size={18} />
+                </button>
+
+                <div className="relative w-10 h-10 flex items-center justify-center">
+                  <button 
+                    onClick={() => {
+                      if (status === 'IDLE') startListening();
+                      else stopListening();
+                    }}
+                    className={`w-10 h-10 flex items-center justify-center rounded-full transition-all relative z-[120] cursor-pointer
+                      ${status !== 'IDLE' ? 'bg-theme-accent text-black shadow-[0_0_20px_rgba(var(--theme-accent-rgb),0.4)]' : 'hover:bg-white/10 text-secondary-txt'}
+                    `}
+                  >
+                    {status !== 'IDLE' ? <X size={18} /> : <Mic size={18} />}
                   </button>
 
-                  <span className={`${status === 'THINKING' ? 'text-success-green' : 'text-theme-accent'} font-mono font-bold mx-3`}>{'>'}</span>
-                  
-                  <AnimatePresence mode="wait">
-                    {status === 'LISTENING' ? (
+                  {status === 'LISTENING' && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[110]">
                       <motion.div
-                        key="listening-waveform"
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        className="flex-1 flex items-center gap-3 h-10"
-                      >
-                        <span className="text-[11px] font-mono text-theme-accent uppercase tracking-[0.2em] animate-pulse">
-                          Listening
-                        </span>
-                        <VoiceWaveform volume={frequency} />
-                      </motion.div>
-                    ) : (
+                        animate={{ scale: scale, opacity: [0.4, 0.7, 0.4] }}
+                        transition={{ duration: 0.1 }}
+                        className="absolute w-12 h-12 rounded-full border border-theme-accent/60 shadow-[0_0_15px_rgba(var(--theme-accent-rgb),0.3)]"
+                      />
                       <motion.div
-                        key="input-box"
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
-                        className="flex-1"
-                      >
-                        <input
-                          autoFocus
-                          value={input}
-                          onChange={(e) => setInput(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                          placeholder={
-                            status === 'THINKING' ? "JARVIS is thinking..." : 
-                            "Initialize command..."
-                          }
-                          disabled={status === 'THINKING'}
-                          className="w-full bg-transparent border-none focus:outline-none text-primary-txt font-mono text-sm placeholder:text-primary-txt/20 disabled:opacity-50"
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* VOICE TOGGLE & SEND */}
-                  <div className="flex items-center gap-2 pr-1">
-                    <div className="relative w-10 h-10 flex items-center justify-center">
-                      <button 
-                        onClick={() => {
-                          if (status === 'IDLE') startListening();
-                          else stopListening();
-                        }}
-                        className={`w-10 h-10 flex items-center justify-center rounded-full transition-all relative z-[120]
-                          ${status !== 'IDLE' ? 'bg-theme-accent text-black shadow-[0_0_20px_rgba(var(--theme-accent-rgb),0.4)]' : 'hover:bg-white/10 text-secondary-txt'}
-                        `}
-                      >
-                        {status !== 'IDLE' ? <X size={18} /> : <Mic size={18} />}
-                      </button>
-
-                      {status === 'LISTENING' && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[110]">
-                          <motion.div
-                            animate={{ scale: scale, opacity: [0.4, 0.7, 0.4] }}
-                            transition={{ duration: 0.1 }}
-                            className="absolute w-12 h-12 rounded-full border border-theme-accent/60 shadow-[0_0_15px_rgba(var(--theme-accent-rgb),0.3)]"
-                          />
-                          <motion.div
-                            animate={{ scale: scale * 1.35, rotate: 360 }}
-                            transition={{ rotate: { repeat: Infinity, duration: 12, ease: "linear" }, scale: { duration: 0.1 } }}
-                            className="absolute w-12 h-12 rounded-full border border-dashed border-theme-accent/40"
-                          />
-                          <motion.div
-                            animate={{ scale: scale * 1.7, opacity: [0.15, 0.3, 0.15] }}
-                            transition={{ duration: 0.1 }}
-                            className="absolute w-12 h-12 rounded-full border border-dotted border-theme-accent/20"
-                          />
-                        </div>
-                      )}
+                        animate={{ scale: scale * 1.35, rotate: 360 }}
+                        transition={{ rotate: { repeat: Infinity, duration: 12, ease: "linear" }, scale: { duration: 0.1 } }}
+                        className="absolute w-12 h-12 rounded-full border border-dashed border-theme-accent/40"
+                      />
+                      <motion.div
+                        animate={{ scale: scale * 1.7, opacity: [0.15, 0.3, 0.15] }}
+                        transition={{ duration: 0.1 }}
+                        className="absolute w-12 h-12 rounded-full border border-dotted border-theme-accent/20"
+                      />
                     </div>
-
-                    <button 
-                      onClick={() => handleSend()}
-                      className="w-10 h-10 flex items-center justify-center rounded-full bg-theme-accent/10 border border-theme-accent/30 text-theme-accent hover:bg-theme-accent hover:text-black transition-all"
-                    >
-                      <Send size={16} />
-                    </button>
-                  </div>
+                  )}
                 </div>
+
+                <button 
+                  onClick={() => handleSend()}
+                  disabled={status === 'THINKING' || (!input.trim() && attachedFiles.length === 0)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-theme-accent/10 border border-theme-accent/30 text-theme-accent hover:bg-theme-accent hover:text-black transition-all disabled:opacity-20 cursor-pointer"
+                  title="Send Command"
+                >
+                  <Send size={16} />
+                </button>
               </div>
-            </motion.div>
-          ) : (
-            /* TRIGGER */
-            <div className="w-full flex justify-end pointer-events-none">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                onClick={() => setIsOpen(true)}
-                className="w-14 h-14 rounded-full flex items-center justify-center bg-theme-surface-1 backdrop-blur-xl border border-theme-accent/50 text-theme-accent shadow-lg relative pointer-events-auto"
-              >
-                {status === 'IDLE' ? <Terminal size={22} /> : <div className="scale-50"><NeuralCore /></div>}
-                <div className="absolute inset-0 rounded-full border border-theme-accent animate-ping opacity-30" />
-              </motion.button>
             </div>
-          )}
-        </AnimatePresence>
-      </div>
-    </>
+          </div>
+        </motion.div>
+      ) : (
+        /* TRIGGER */
+        <div className="fixed bottom-12 right-8 z-[100] pointer-events-none">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            onClick={() => setIsOpen(true)}
+            className="w-14 h-14 rounded-full flex items-center justify-center bg-theme-surface-1 backdrop-blur-xl border border-theme-accent/50 text-theme-accent shadow-lg relative pointer-events-auto cursor-pointer"
+          >
+            {status === 'IDLE' ? <Terminal size={22} /> : <div className="scale-50"><NeuralCore /></div>}
+            <div className="absolute inset-0 rounded-full border border-theme-accent animate-ping opacity-30" />
+          </motion.button>
+        </div>
+      )}
+    </AnimatePresence>
   );
 };

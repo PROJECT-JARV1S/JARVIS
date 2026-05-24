@@ -1,9 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import {
   Cpu, MemoryStick, Wifi, WifiOff, Bluetooth, BluetoothOff,
   Volume2, VolumeX, ChevronRight, ChevronLeft,
-  Activity, HardDrive, X, GripVertical, ExternalLink
+  Activity, HardDrive, X, GripVertical, ExternalLink, Music
 } from 'lucide-react';
 import { useSystemInfo } from '@/hooks/useSystemInfo';
 
@@ -86,6 +86,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
   const viewportRef = useRef<HTMLDivElement>(null);
   const cpuDragControls = useDragControls();
   const controlDragControls = useDragControls();
+  const spotifyDragControls = useDragControls();
 
   const cpu = systemInfo ? Math.round(systemInfo.cpu_usage) : 0;
   const ram = systemInfo ? Math.round(systemInfo.ram_usage) : 0;
@@ -99,6 +100,26 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
   // Widget Detach States
   const [isCpuFloated, setIsCpuFloated] = useState(false);
   const [isControlFloated, setIsControlFloated] = useState(false);
+  const [isSpotifyFloated, setIsSpotifyFloated] = useState(false);
+
+  // Media Monitor Progress timer
+  const [trackProgress, setTrackProgress] = useState(105); // seconds (1:45)
+  const trackDuration = 200; // seconds (3:20)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTrackProgress(prev => (prev >= trackDuration ? 0 : prev + 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const progressPercent = (trackProgress / trackDuration) * 100;
 
   // ─── Renderers: Hardware Telemetry ───
   const renderHardwareTelemetry = (isFloated: boolean, onDock: () => void, dragHandleProps?: any) => (
@@ -244,6 +265,86 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
     </div>
   );
 
+  // ─── Renderers: Spotify Deck ───
+  const renderSpotifyDeck = (isFloated: boolean, onDock: () => void, dragHandleProps?: any) => (
+    <div className={`${isFloated ? 'p-4' : ''}`}>
+      <div 
+        {...dragHandleProps}
+        className={`flex items-center gap-2 mb-3 select-none ${isFloated ? 'cursor-grab active:cursor-grabbing bg-black/10 -mx-4 -mt-4 p-4 border-b border-white/5' : ''}`}
+      >
+        {isFloated ? (
+          <GripVertical size={14} className="text-secondary-txt/45" />
+        ) : (
+          <Music size={12} className="text-offline-core/60" />
+        )}
+        <h3 className="text-xs font-mono uppercase tracking-[0.15em] text-offline-core/80 font-bold">
+          Media_Monitor
+        </h3>
+        <span className="ml-auto text-[8px] font-mono text-offline-core/50 uppercase tracking-widest bg-offline-core/5 border border-offline-core/10 px-1.5 py-0.5 rounded">
+          Spotify
+        </span>
+        {isFloated ? (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDock(); }}
+            className="ml-2 text-secondary-txt/60 hover:text-error-red transition-colors p-1 rounded hover:bg-white/5 cursor-pointer"
+            title="Dock Panel"
+          >
+            <X size={14} />
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsSpotifyFloated(true)}
+            className="ml-2 text-secondary-txt/40 hover:text-offline-core transition-colors p-1 rounded hover:bg-white/5 cursor-pointer"
+            title="Float Panel"
+          >
+            <ExternalLink size={12} />
+          </button>
+        )}
+      </div>
+
+      <div className="bg-black/20 border border-white/5 rounded-lg p-3 flex gap-3.5 items-center">
+        {/* Stylized CD Cover */}
+        <div className="w-12 h-12 rounded bg-gradient-to-br from-offline-core/20 to-offline-core/5 border border-offline-core/25 flex items-center justify-center relative overflow-hidden shrink-0">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-10" />
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="w-8 h-8 rounded-full border border-dashed border-offline-core/30 flex items-center justify-center opacity-65"
+          >
+            <div className="w-3.5 h-3.5 rounded-full border border-offline-core/20 bg-black/60" />
+          </motion.div>
+          <div className="absolute inset-0 bg-offline-core/5 opacity-50 animate-pulse" />
+        </div>
+
+        {/* Track details */}
+        <div className="flex-1 min-w-0 flex flex-col justify-between h-12 py-0.5">
+          <div className="min-w-0">
+            <h4 className="text-xs font-mono font-bold text-primary-txt truncate uppercase tracking-wide leading-tight">
+              Station Calibration
+            </h4>
+            <p className="text-[9px] font-mono text-secondary-txt/60 truncate uppercase tracking-widest mt-0.5">
+              Neural Network
+            </p>
+          </div>
+
+          {/* Progress */}
+          <div className="space-y-1">
+            <div className="h-1 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+              <div 
+                className="h-full bg-offline-core rounded-full"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[8px] font-mono text-secondary-txt/55 font-semibold tracking-wider">
+              <span>{formatTime(trackProgress)}</span>
+              <span>{formatTime(trackDuration)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   // ─── Renderers: Sidebar Placeholders ───
   const renderHardwarePlaceholder = () => (
     <div className="border border-dashed border-white/10 rounded-lg p-4 flex flex-col items-center justify-center min-h-[160px] bg-black/5 select-none">
@@ -275,6 +376,21 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
     </div>
   );
 
+  const renderSpotifyPlaceholder = () => (
+    <div className="border border-dashed border-white/10 rounded-lg p-4 flex flex-col items-center justify-center min-h-[120px] bg-black/5 select-none">
+      <Music size={18} className="text-secondary-txt/20 mb-2" />
+      <span className="text-[10px] font-mono text-secondary-txt/30 uppercase tracking-wider">
+        Media_Floated
+      </span>
+      <button 
+        onClick={() => setIsSpotifyFloated(false)}
+        className="mt-2 text-[9px] font-mono text-offline-core/60 hover:text-offline-core hover:underline cursor-pointer"
+      >
+        [Dock_Back]
+      </button>
+    </div>
+  );
+
   return (
     <>
       {/* Collapse/Expand Toggle Tab */}
@@ -287,7 +403,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
       </button>
 
       {/* Invisible Viewport Bounds Constraint for Dragging */}
-      {(isCpuFloated || isControlFloated) && (
+      {(isCpuFloated || isControlFloated || isSpotifyFloated) && (
         <div ref={viewportRef} className="fixed inset-0 pointer-events-none z-30" />
       )}
 
@@ -308,6 +424,25 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
           >
             {renderHardwareTelemetry(true, () => setIsCpuFloated(false), {
               onPointerDown: (e: React.PointerEvent) => cpuDragControls.start(e)
+            })}
+          </motion.div>
+        )}
+
+        {isSpotifyFloated && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            drag
+            dragListener={false}
+            dragControls={spotifyDragControls}
+            dragConstraints={viewportRef}
+            dragMomentum={false}
+            dragElastic={0.05}
+            className="fixed top-[22rem] right-[20rem] z-40 w-72 bg-offline-surface-dark border border-offline-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md overflow-hidden pointer-events-auto"
+          >
+            {renderSpotifyDeck(true, () => setIsSpotifyFloated(false), {
+              onPointerDown: (e: React.PointerEvent) => spotifyDragControls.start(e)
             })}
           </motion.div>
         )}
@@ -349,6 +484,9 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
               
               {/* Controls Panel Items */}
               {isControlFloated ? renderControlPlaceholder() : renderControlDeck(false, () => {})}
+              
+              {/* Media Monitor Panel Items */}
+              {isSpotifyFloated ? renderSpotifyPlaceholder() : renderSpotifyDeck(false, () => {})}
 
               {/* ── Footer: Telemetry Mode State ── */}
               <div className="mt-auto pt-3 border-t border-white/5">
@@ -372,3 +510,4 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
     </>
   );
 };
+

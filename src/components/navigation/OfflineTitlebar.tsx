@@ -1,6 +1,6 @@
 import { Shield, HardDrive, Cpu, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { MOCK_SYSTEM_UTILITIES } from '@/lib/mockData';
+import { useSystemInfo } from '@/hooks/useSystemInfo';
 import { NeuralCore } from '@/features/mcp/components/NeuralCore'; 
 
 const MotionShield = motion(Shield);
@@ -8,6 +8,11 @@ const MotionShield = motion(Shield);
 const MotionLock = motion(Lock);
 
 export const OfflineTitlebar = () => {
+  const { systemInfo } = useSystemInfo();
+  const formattedTime = systemInfo 
+    ? new Date(systemInfo.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '--:--';
+
   return (
     <header 
       data-tauri-drag-region 
@@ -65,14 +70,14 @@ export const OfflineTitlebar = () => {
           <div className="flex items-center gap-2.5 group">
             <HardDrive size={14} className="text-offline-core/60 group-hover:text-offline-core transition-colors" />
             <div className="text-xs font-mono text-secondary-txt uppercase">
-              Disk <span className="text-primary-txt ml-1 font-bold">84%</span>
+              Disk <span className="text-primary-txt ml-1 font-bold">{systemInfo ? Math.round(systemInfo.disk_usage) : '--'}%</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5 group">
             <Cpu size={14} className="text-offline-core/60 group-hover:text-offline-core transition-colors" />
             <div className="text-xs font-mono text-secondary-txt uppercase">
-              Temp <span className="text-primary-txt ml-1 font-bold">24.2°C</span>
+              Temp <span className="text-primary-txt ml-1 font-bold">{systemInfo?.cpu_temperature ? `${systemInfo.cpu_temperature.toFixed(1)}°C` : 'N/A'}</span>
             </div>
           </div>
         </div>
@@ -86,7 +91,7 @@ export const OfflineTitlebar = () => {
 
         <div className="text-xs font-mono text-primary-txt uppercase tracking-tight border-l border-white/5 pl-6">
           <span className="text-secondary-txt opacity-50 mr-2">TIME:</span>
-          {MOCK_SYSTEM_UTILITIES.timeData}
+          {formattedTime}
         </div>
       </div>
       
@@ -102,7 +107,7 @@ export const OfflineTitlebar = () => {
         
         {/* Profile Avatar (Square Technical Style) */}
         <div className="w-9 h-9 bg-offline-surface border border-offline-border flex items-center justify-center text-xs font-mono text-offline-core hover:bg-offline-core hover:text-offline-bg transition-all duration-300 cursor-pointer shadow-inner font-bold">
-          S
+          {systemInfo ? systemInfo.username.substring(0, 1).toUpperCase() : 'U'}
         </div>
       </div>
     </header>

@@ -1,11 +1,12 @@
 import { Search, Activity } from 'lucide-react';
 import { useState } from 'react';
-import { MOCK_SYSTEM_UTILITIES } from '@/lib/mockData';
+import { useSystemInfo } from '@/hooks/useSystemInfo';
 import { NeuralCore } from '@/features/mcp/components/NeuralCore';
 
 export const Titlebar = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+  const { systemInfo } = useSystemInfo();
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     setSearchTerm(e.target.value);
@@ -40,7 +41,7 @@ export const Titlebar = () => {
       <div className="flex items-center gap-8">
         <div className="flex items-center gap-4">
           <div className="text-tertiary-txt text-[11px] font-mono uppercase tracking-tight pointer-events-none">
-            BATTERY: <span className="text-success-green font-bold">{MOCK_SYSTEM_UTILITIES.batteryData}%</span>
+            DISK: <span className="text-success-green font-bold">{systemInfo ? Math.round(systemInfo.disk_usage) : '--'}%</span>
           </div>
           <div className="text-primary-txt text-[11px] font-mono uppercase tracking-tight pointer-events-none border-l border-white/10 pl-4 min-w-[100px]">
             <span className="text-tertiary-txt">TIME: </span>{currentTime}
@@ -71,7 +72,7 @@ export const Titlebar = () => {
         {/* User Profile */}
         <div className="flex items-center gap-3 pl-2 border-l border-white/10">
            <div className="rounded-full bg-jarvis-blue/10 border border-jarvis-blue/30 w-8 h-8 flex items-center justify-center text-xs font-mono text-jarvis-blue shadow-[0_0_10px_rgba(0,240,255,0.1)] hover:bg-jarvis-blue hover:text-base transition-all duration-300 cursor-pointer">
-            S
+            {systemInfo ? systemInfo.username.substring(0, 2).toUpperCase() : 'U'}
           </div>
         </div>
       </div>

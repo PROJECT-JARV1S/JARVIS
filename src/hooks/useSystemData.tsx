@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { onTelemetryReceived } from '@/services/system.service';
 import { 
   MOCK_SYSTEM_STATS, MOCK_DEVICES, MOCK_TASKS, 
   MOCK_EVENTS, MOCK_CPU_HISTORY, MOCK_RAM_HISTORY, MOCK_NET_HISTORY 
@@ -7,9 +7,9 @@ import {
 
 export const useSystemData = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [error, _setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
-  const [stats] = useState(MOCK_SYSTEM_STATS);
+  const [stats, setStats] = useState(MOCK_SYSTEM_STATS);
   const [devices, setDevices] = useState(MOCK_DEVICES);
   const [tasks, setTasks] = useState(MOCK_TASKS);
   const [events, setEvents] = useState(MOCK_EVENTS);
@@ -57,29 +57,54 @@ export const useSystemData = () => {
     addEvent(`DEVICE_ADDED: ${device.name}`);
   }, [addEvent]);
 
-  // --- 2. BOOT SEQUENCE ---
+  // --- 2. BOOT SEQUENCE & TELEMETRY SUBSCRIBER ---
   useEffect(() => {
-    const boot = async () => {
-      // Try to fetch real device info from the backend
-      try {
-        const deviceInfo = await invoke<string>('get_device_info');
-        // If the backend returns real data in the future, parse and use it here.
-        // For now the stub returns an error, which we catch below.
-        addEvent(`BACKEND_SYNC: Device info received`);
-        console.log('[SystemData] Backend device info:', deviceInfo);
-      } catch (err) {
-        // Expected: the backend stub returns NotAvailable.
-        // Gracefully fall back to mock/simulated data.
-        console.info('[SystemData] Backend get_device_info not available, using simulated data:', err);
-      }
+    let unlisten: (() => void) | undefined;
 
-      // Finish boot regardless of backend availability
-      await new Promise(r => setTimeout(r, 1200));
-      setIsLoading(false);
+    const setupListener = async () => {
+      try {
+        unlisten = await onTelemetryReceived((info) => {
+          // 1. Update overall average statistics
+          setStats((prev) => ({
+            ...prev,
+            avgCpuUsage: Math.round(info.cpu_usage),
+            avgRamUsage: Math.round(info.ram_usage),
+          }));
+
+          // 2. Append to rolling chart histories
+          setHistory((prev) => {
+            const timeStr = new Date(info.time).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false,
+            });
+
+            return {
+              cpu: [...prev.cpu.slice(1), { time: timeStr, value: Math.round(info.cpu_usage) }],
+              ram: [...prev.ram.slice(1), { time: timeStr, value: Math.round(info.ram_usage) }],
+              net: prev.net, // net traffic remains simulated/mocked for now
+            };
+          });
+
+          // 3. Mark loading complete on first telemetry packet
+          setIsLoading(false);
+        });
+      } catch (err) {
+        console.error('Telemetry subscription error:', err);
+        setError('Failed to establish backend telemetry uplink');
+        setIsLoading(false);
+      }
     };
-    boot();
+
+    setupListener();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
   }, []);
 
+  // --- 3. FLEET DEVICES SIMULATED FLUCTUATION ---
   useEffect(() => {
     if (isLoading || error) return;
 
@@ -96,26 +121,7 @@ export const useSystemData = () => {
           };
         })
       );
-
-      setHistory(prev => {
-        const lastCpu = prev.cpu[prev.cpu.length - 1].value;
-        const lastRam = prev.ram[prev.ram.length - 1].value;
-        const lastNet = prev.net[prev.net.length - 1].value;
-
-        const newCpu = Math.min(100, Math.max(0, lastCpu + (Math.floor(Math.random() * 15) - 7)));
-        const newRam = Math.min(100, Math.max(0, lastRam + (Math.floor(Math.random() * 5) - 2)));
-        const newNet = Math.max(10, lastNet + (Math.floor(Math.random() * 20) - 10));
-
-        const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-
-        return {
-          cpu: [...prev.cpu.slice(1), { time: timeStr, value: newCpu }],
-          ram: [...prev.ram.slice(1), { time: timeStr, value: newRam }],
-          net: [...prev.net.slice(1), { time: timeStr, value: newNet }]
-        };
-      });
-    }, 3000); // Ticks every 3 seconds
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [isLoading, error]);

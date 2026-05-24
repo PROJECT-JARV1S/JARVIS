@@ -46,19 +46,6 @@ export const MCPTerminal = () => {
   const [showHistory, setShowHistory] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Initialize a chat session on mount
-  useEffect(() => {
-    const initSession = async () => {
-      try {
-        const id = await createSession("MCP Terminal");
-        setSessionId(id);
-      } catch (err) {
-        console.error("Failed to create MCP terminal session:", err);
-      }
-    };
-    initSession();
-  }, []);
-  
   // Use a ref to track if we've already sent the current transcript
   const lastProcessedTranscript = useRef('');
 

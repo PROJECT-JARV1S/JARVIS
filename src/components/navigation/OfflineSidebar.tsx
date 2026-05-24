@@ -54,10 +54,8 @@ export const OfflineSidebar = ({ onSettingsClick }: OfflineSidebarProps) => {
     }
   };
 
-  const handleDeleteClick = async (sessionId: string) => {
-    if (window.confirm("Are you sure you want to delete this session? All history will be lost.")) {
-      await deleteSession(sessionId);
-    }
+  const handleDeleteClick = (sessionId: string) => {
+    deleteSession(sessionId);
   };
 
   return (

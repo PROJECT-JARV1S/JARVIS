@@ -75,7 +75,7 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
   const [input, setInput] = useState('');
   const initRef = useRef(false);
 
-  // ── Boot: load sessions or create first one ──
+  // ── Boot: load sessions or set draft state ──
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
@@ -91,33 +91,21 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
           setActiveSessionId(latest.id);
           await loadSessionHistory(latest.id);
         } else {
-          // No sessions exist — create the first one
-          await createFirstSession();
+          // No sessions exist — start in draft mode
+          prepareDraftSession();
         }
       } catch (err) {
-        console.warn('[SessionContext] Init failed, creating local session:', err);
-        await createFirstSession();
+        console.warn('[SessionContext] Init failed, setting local draft session:', err);
+        prepareDraftSession();
       }
     };
 
     init();
   }, []);
 
-  const createFirstSession = async () => {
-    try {
-      const id = await createSession('New Session');
-      const newSession: Session = {
-        id,
-        title: 'New Session',
-        created_at: Date.now(),
-        updated_at: Date.now(),
-      };
-      setSessions([newSession]);
-      setActiveSessionId(id);
-      setMessages([WELCOME_MESSAGE]);
-    } catch (err) {
-      console.error('[SessionContext] Failed to create first session:', err);
-    }
+  const prepareDraftSession = () => {
+    setActiveSessionId(null);
+    setMessages([WELCOME_MESSAGE]);
   };
 
   const loadSessionHistory = async (sessionId: string) => {
@@ -146,16 +134,16 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
 
   // ── Create new session ──
   const createNewSession = useCallback(async () => {
-    try {
-      const id = await createSession('New Session');
-      setActiveSessionId(id);
-      setMessages([WELCOME_MESSAGE]);
+    // If we're already on an empty draft, just clear the input and do nothing
+    const hasUserMessages = messages.some(m => m.sender === 'user');
+    if (!activeSessionId && !hasUserMessages) {
       setInput('');
-      await refreshSessions();
-    } catch (err) {
-      console.error('[SessionContext] Failed to create session:', err);
+      return;
     }
-  }, [refreshSessions]);
+
+    prepareDraftSession();
+    setInput('');
+  }, [activeSessionId, messages]);
 
   // ── Switch to existing session ──
   const switchSession = useCallback(async (sessionId: string) => {
@@ -178,29 +166,29 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
 
   // ── Delete session ──
   const handleDeleteSession = useCallback(async (sessionId: string) => {
+    // 1. Optimistic update: instantly remove from list and update active selection
+    const updatedSessions = sessions.filter(s => s.id !== sessionId);
+    setSessions(updatedSessions);
+    
+    if (activeSessionId === sessionId) {
+      if (updatedSessions.length > 0) {
+        const nextActive = updatedSessions[0];
+        setActiveSessionId(nextActive.id);
+        loadSessionHistory(nextActive.id);
+      } else {
+        prepareDraftSession();
+      }
+    }
+
+    // 2. Perform backend deletion in background
     try {
       await deleteSession(sessionId);
-      
-      const updatedSessions = sessions.filter(s => s.id !== sessionId);
-      setSessions(updatedSessions);
-      
-      // If we deleted the active session, pick another or create a new one
-      if (activeSessionId === sessionId) {
-        if (updatedSessions.length > 0) {
-          const nextActive = updatedSessions[0];
-          setActiveSessionId(nextActive.id);
-          await loadSessionHistory(nextActive.id);
-        } else {
-          // No sessions left — create a new one
-          await createFirstSession();
-        }
-      } else {
-        await refreshSessions();
-      }
+      const updated = await listSessions();
+      setSessions(updated);
     } catch (err) {
-      console.error('[SessionContext] Failed to delete session:', err);
+      console.error('[SessionContext] Failed to delete session on backend:', err);
     }
-  }, [sessions, activeSessionId, refreshSessions]);
+  }, [sessions, activeSessionId]);
 
   // ── Send message ──
   const sendMessage = useCallback(async (overrideText?: string) => {
@@ -218,22 +206,25 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       // Ensure we have a session
       let sid = activeSessionId;
       if (!sid) {
-        sid = await createSession('New Session');
-        setActiveSessionId(sid);
-      }
-
-      // Auto-title: if this is the first user message in the session, 
-      // use the text as the session title (truncated)
-      const isFirstMessage = messages.filter(m => m.sender === 'user').length === 0;
-      if (isFirstMessage) {
-        const truncatedTitle = textToSend.length > 40 
+        const initialTitle = textToSend.length > 40 
           ? textToSend.substring(0, 40) + '...' 
           : textToSend;
-        
-        try {
-          await renameSession(sid, truncatedTitle);
-        } catch (err) {
-          console.error('[SessionContext] Failed to rename session on backend:', err);
+        sid = await createSession(initialTitle);
+        setActiveSessionId(sid);
+      } else {
+        // Auto-title: if this is the first user message in the session, 
+        // use the text as the session title (truncated)
+        const isFirstMessage = messages.filter(m => m.sender === 'user').length === 0;
+        if (isFirstMessage) {
+          const truncatedTitle = textToSend.length > 40 
+            ? textToSend.substring(0, 40) + '...' 
+            : textToSend;
+          
+          try {
+            await renameSession(sid, truncatedTitle);
+          } catch (err) {
+            console.error('[SessionContext] Failed to rename session on backend:', err);
+          }
         }
       }
 

@@ -28,8 +28,8 @@ export const Button = ({
 
   // 3. Variant dictionary using your exact JARVIS tokens
   const variants = {
-    primary: "bg-jarvis-blue/10 text-jarvis-blue border border-jarvis-blue/50 hover:bg-jarvis-blue hover:text-base hover:shadow-[0_0_15px_rgba(0,240,255,0.4)]",
-    outline: "bg-transparent text-secondary-txt border border-surface-3 hover:border-jarvis-blue hover:text-jarvis-blue",
+    primary: "bg-theme-accent/10 text-theme-accent border border-theme-accent/50 hover:bg-theme-accent hover:text-black hover:shadow-[0_0_15px_rgba(var(--theme-accent-rgb),0.4)]",
+    outline: "bg-transparent text-secondary-txt border border-surface-3 hover:border-theme-accent hover:text-theme-accent",
     ghost: "bg-transparent text-secondary-txt border border-transparent hover:bg-surface-2 hover:text-primary-txt",
     danger: "bg-error-red/10 text-error-red border border-error-red/50 hover:bg-error-red hover:text-white hover:shadow-[0_0_15px_rgba(255,51,51,0.4)]"
   };

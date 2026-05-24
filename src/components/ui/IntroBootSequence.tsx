@@ -1,8 +1,10 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Power } from 'lucide-react'; 
+import { useTheme } from '@/context/ThemeContext';
 
 export const IntroBootSequence = ({ onComplete }: { onComplete: () => void }) => {
+  const { theme: _theme } = useTheme();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasStarted, setHasStarted] = useState(false);
   const [videoSrc, setVideoSrc] = useState("");
@@ -69,10 +71,10 @@ export const IntroBootSequence = ({ onComplete }: { onComplete: () => void }) =>
             onClick={startSystem}
             className="flex flex-col items-center gap-4 group"
           >
-            <div className="w-20 h-20 rounded-full border border-jarvis-blue/20 flex items-center justify-center group-hover:shadow-[0_0_30px_rgba(0,240,255,0.2)] transition-all duration-500">
-              <Power className="text-jarvis-blue/40 group-hover:text-jarvis-blue" size={32} />
+            <div className="w-20 h-20 rounded-full border border-theme-accent/20 flex items-center justify-center group-hover:shadow-[0_0_30px_rgba(var(--theme-accent-rgb),0.2)] transition-all duration-500">
+              <Power className="text-theme-accent/40 group-hover:text-theme-accent" size={32} />
             </div>
-            <span className="font-mono text-[10px] tracking-[0.3em] text-jarvis-blue/40 uppercase">
+            <span className="font-mono text-[10px] tracking-[0.3em] text-theme-accent/40 uppercase">
               INITIALIZE_CORE
             </span>
           </motion.button>

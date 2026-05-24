@@ -80,20 +80,20 @@ export const LinkDeviceModal = ({ isOpen, onClose, onDeviceAdd }: LinkDeviceModa
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="relative w-full max-w-lg bg-surface-1/60 backdrop-blur-xl border border-jarvis-blue/30 rounded-xl shadow-[0_0_40px_rgba(0,240,255,0.1)] overflow-hidden"
+            className="relative w-full max-w-lg bg-surface-1/60 backdrop-blur-xl border border-theme-accent/30 rounded-xl shadow-[0_0_40px_rgba(var(--theme-accent-rgb),0.1)] overflow-hidden"
           >
             {/* HUD Corners */}
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-jarvis-blue/50 rounded-tl-xl pointer-events-none" />
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-jarvis-blue/50 rounded-br-xl pointer-events-none" />
+            <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-theme-accent/50 rounded-tl-xl pointer-events-none" />
+            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-theme-accent/50 rounded-br-xl pointer-events-none" />
 
             <div className="flex items-center justify-between p-5 border-b border-white/5 bg-surface-2/40">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded border border-jarvis-blue/50 bg-jarvis-blue/10 flex items-center justify-center text-jarvis-blue shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+                <div className="w-8 h-8 rounded border border-theme-accent/50 bg-theme-accent/10 flex items-center justify-center text-theme-accent shadow-[0_0_10px_rgba(var(--theme-accent-rgb),0.2)]">
                   <Server size={16} />
                 </div>
                 <div>
                   <h2 className="font-mono font-bold text-primary-txt tracking-wide">ESTABLISH_UPLINK</h2>
-                  <p className="text-[10px] font-mono text-jarvis-blue uppercase tracking-widest">Register New Hardware Node</p>
+                  <p className="text-[10px] font-mono text-theme-accent uppercase tracking-widest">Register New Hardware Node</p>
                 </div>
               </div>
               <button onClick={onClose} className="text-secondary-txt hover:text-error-red transition-colors">
@@ -114,7 +114,7 @@ export const LinkDeviceModal = ({ isOpen, onClose, onDeviceAdd }: LinkDeviceModa
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="e.g. CORE_SERVER_02" 
                   className={`w-full bg-surface-2/50 border rounded px-4 py-2.5 text-sm font-mono text-primary-txt focus:outline-none transition-all placeholder:text-surface-3 
-                    ${errors.name ? 'border-error-red focus:shadow-[0_0_10px_rgba(255,51,51,0.2)]' : 'border-surface-3 focus:border-jarvis-blue/50 focus:shadow-[0_0_10px_rgba(0,240,255,0.1)]'}`}
+                    ${errors.name ? 'border-error-red focus:shadow-[0_0_10px_rgba(255,51,51,0.2)]' : 'border-surface-3 focus:border-theme-accent/50 focus:shadow-[0_0_10px_rgba(var(--theme-accent-rgb),0.1)]'}`}
                 />
                 {errors.name && <span className="text-error-red text-[10px] font-mono uppercase flex items-center gap-1"><AlertTriangle size={10} /> {errors.name}</span>}
               </div>
@@ -130,7 +130,7 @@ export const LinkDeviceModal = ({ isOpen, onClose, onDeviceAdd }: LinkDeviceModa
                   onChange={(e) => setFormData({...formData, ip: e.target.value})}
                   placeholder="192.168.1.xxx" 
                   className={`w-full bg-surface-2/50 border rounded px-4 py-2.5 text-sm font-mono text-primary-txt focus:outline-none transition-all placeholder:text-surface-3 
-                    ${errors.ip ? 'border-error-red focus:shadow-[0_0_10px_rgba(255,51,51,0.2)]' : 'border-surface-3 focus:border-jarvis-blue/50 focus:shadow-[0_0_10px_rgba(0,240,255,0.1)]'}`}
+                    ${errors.ip ? 'border-error-red focus:shadow-[0_0_10px_rgba(255,51,51,0.2)]' : 'border-surface-3 focus:border-theme-accent/50 focus:shadow-[0_0_10px_rgba(var(--theme-accent-rgb),0.1)]'}`}
                 />
                 {errors.ip && <span className="text-error-red text-[10px] font-mono uppercase flex items-center gap-1"><AlertTriangle size={10} /> {errors.ip}</span>}
               </div>
@@ -138,7 +138,7 @@ export const LinkDeviceModal = ({ isOpen, onClose, onDeviceAdd }: LinkDeviceModa
               {/* MAC Address */}
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-mono text-secondary-txt uppercase tracking-widest flex items-center gap-2">
-                  <Zap size={12} className={errors.mac ? "text-error-red" : "text-jarvis-blue"} /> Physical MAC Address <span className="text-[9px] text-surface-3">(Required for WoL)</span>
+                  <Zap size={12} className={errors.mac ? "text-error-red" : "text-theme-accent"} /> Physical MAC Address <span className="text-[9px] text-surface-3">(Required for WoL)</span>
                 </label>
                 <input 
                   type="text" 
@@ -146,7 +146,7 @@ export const LinkDeviceModal = ({ isOpen, onClose, onDeviceAdd }: LinkDeviceModa
                   onChange={(e) => setFormData({...formData, mac: e.target.value.toUpperCase()})}
                   placeholder="00:1A:2B:3C:4D:5E" 
                   className={`w-full bg-surface-2/50 border rounded px-4 py-2.5 text-sm font-mono text-primary-txt uppercase focus:outline-none transition-all placeholder:text-surface-3 
-                    ${errors.mac ? 'border-error-red focus:shadow-[0_0_10px_rgba(255,51,51,0.2)]' : 'border-surface-3 focus:border-jarvis-blue/50 focus:shadow-[0_0_10px_rgba(0,240,255,0.1)]'}`}
+                    ${errors.mac ? 'border-error-red focus:shadow-[0_0_10px_rgba(255,51,51,0.2)]' : 'border-surface-3 focus:border-theme-accent/50 focus:shadow-[0_0_10px_rgba(var(--theme-accent-rgb),0.1)]'}`}
                 />
                 {errors.mac && <span className="text-error-red text-[10px] font-mono uppercase flex items-center gap-1"><AlertTriangle size={10} /> {errors.mac}</span>}
               </div>
@@ -162,7 +162,7 @@ export const LinkDeviceModal = ({ isOpen, onClose, onDeviceAdd }: LinkDeviceModa
                   onChange={(e) => setFormData({...formData, key: e.target.value})}
                   placeholder="••••••••••••••••" 
                   className={`w-full bg-surface-2/50 border rounded px-4 py-2.5 text-sm font-mono text-primary-txt focus:outline-none transition-all placeholder:text-surface-3 
-                    ${errors.key ? 'border-error-red focus:shadow-[0_0_10px_rgba(255,51,51,0.2)]' : 'border-surface-3 focus:border-jarvis-blue/50 focus:shadow-[0_0_10px_rgba(0,240,255,0.1)]'}`}
+                    ${errors.key ? 'border-error-red focus:shadow-[0_0_10px_rgba(255,51,51,0.2)]' : 'border-surface-3 focus:border-theme-accent/50 focus:shadow-[0_0_10px_rgba(var(--theme-accent-rgb),0.1)]'}`}
                 />
                 {errors.key && <span className="text-error-red text-[10px] font-mono uppercase flex items-center gap-1"><AlertTriangle size={10} /> {errors.key}</span>}
               </div>
@@ -176,7 +176,7 @@ export const LinkDeviceModal = ({ isOpen, onClose, onDeviceAdd }: LinkDeviceModa
               <Button 
                 variant="primary" 
                 onClick={handleInitiate}
-                className={`shadow-[0_0_15px_rgba(0,240,255,0.3)] ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`shadow-[0_0_15px_rgba(var(--theme-accent-rgb),0.3)] ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'VERIFYING...' : 'INITIATE UPLINK'}

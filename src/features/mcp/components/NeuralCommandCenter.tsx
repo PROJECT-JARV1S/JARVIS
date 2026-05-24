@@ -78,7 +78,7 @@ export const NeuralCommandCenter = ({ mode: _mode }: CommandCenterProps) => {
 
               {/* CENTERED COMMAND BAR */}
               <div className={`w-full bg-surface-1/90 backdrop-blur-3xl border rounded-full p-2 flex items-center transition-all duration-500
-                ${status === 'LISTENING' ? 'border-jarvis-blue shadow-[0_0_40px_rgba(0,240,255,0.2)]' : 'border-white/10'}
+                ${status === 'LISTENING' ? 'border-theme-accent shadow-[0_0_40px_rgba(var(--theme-accent-rgb),0.2)]' : 'border-white/10'}
               `}>
                 
                 {/* LEFT: Minimize (The arrow you asked for) */}
@@ -89,7 +89,7 @@ export const NeuralCommandCenter = ({ mode: _mode }: CommandCenterProps) => {
                   <ChevronLeft size={20} />
                 </button>
 
-                <span className="text-jarvis-blue font-mono font-bold mx-3">{'>'}</span>
+                <span className="text-theme-accent font-mono font-bold mx-3">{'>'}</span>
                 
                 <input
                   autoFocus
@@ -104,7 +104,7 @@ export const NeuralCommandCenter = ({ mode: _mode }: CommandCenterProps) => {
                   <button 
                     onClick={status === 'IDLE' ? startListening : stopListening}
                     className={`w-10 h-10 flex items-center justify-center rounded-full transition-all
-                      ${status !== 'IDLE' ? 'bg-jarvis-blue text-black shadow-[0_0_15px_#00F0FF]' : 'hover:bg-white/10 text-secondary-txt'}
+                      ${status !== 'IDLE' ? 'bg-theme-accent text-black shadow-[0_0_15px_var(--theme-accent)]' : 'hover:bg-white/10 text-secondary-txt'}
                     `}
                   >
                     {/* The X is now the Voice Toggle button when active */}
@@ -113,7 +113,7 @@ export const NeuralCommandCenter = ({ mode: _mode }: CommandCenterProps) => {
 
                   <button 
                     onClick={handleSend}
-                    className="w-10 h-10 flex items-center justify-center rounded-full bg-jarvis-blue/10 border border-jarvis-blue/30 text-jarvis-blue hover:bg-jarvis-blue hover:text-black transition-all"
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-theme-accent/10 border border-theme-accent/30 text-theme-accent hover:bg-theme-accent hover:text-black transition-all"
                   >
                     <Send size={18} />
                   </button>
@@ -126,10 +126,10 @@ export const NeuralCommandCenter = ({ mode: _mode }: CommandCenterProps) => {
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 onClick={() => setIsOpen(true)}
-                className="w-14 h-14 rounded-full flex items-center justify-center bg-surface-1/80 border border-jarvis-blue/40 text-jarvis-blue shadow-lg relative group"
+                className="w-14 h-14 rounded-full flex items-center justify-center bg-surface-1/80 border border-theme-accent/40 text-theme-accent shadow-lg relative group"
               >
                 <Cpu size={24} className="group-hover:rotate-180 transition-transform duration-500" />
-                <div className="absolute inset-0 rounded-full border border-jarvis-blue animate-ping opacity-20" />
+                <div className="absolute inset-0 rounded-full border border-theme-accent animate-ping opacity-20" />
               </motion.button>
             </div>
           )}

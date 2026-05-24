@@ -42,7 +42,7 @@ export const VariableTypingH2 = ({ text, className = "", onComplete }: Props) =>
 
   return (
     <div className={`relative inline-block ${className}`}>
-      <h2 className="font-mono text-jarvis-blue text-xs tracking-[0.5em] uppercase flex items-center">
+      <h2 className="font-mono text-theme-accent text-xs tracking-[0.5em] uppercase flex items-center">
         {/* The typed content */}
         <span className="opacity-80">{displayedText}</span>
         
@@ -56,7 +56,7 @@ export const VariableTypingH2 = ({ text, className = "", onComplete }: Props) =>
                 repeat: Infinity, 
                 duration: 0.6, // Slightly faster blink for a "waiting" feel
               }}
-              className="inline-block w-[8px] h-[14px] bg-jarvis-blue ml-2 translate-y-[1px] shadow-[0_0_8px_#00F0FF]"
+              className="inline-block w-[8px] h-[14px] bg-theme-accent ml-2 translate-y-[1px] shadow-[0_0_8px_var(--theme-accent)]"
             />
           )}
         </AnimatePresence>

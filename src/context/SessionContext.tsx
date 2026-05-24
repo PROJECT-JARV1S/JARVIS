@@ -24,7 +24,7 @@ interface SessionContextType {
   // Actions
   createNewSession: () => Promise<void>;
   switchSession: (sessionId: string) => Promise<void>;
-  sendMessage: (overrideText?: string) => Promise<void>;
+  sendMessage: (overrideText?: string, attachments?: string[]) => Promise<void>;
   renameSession: (sessionId: string, newTitle: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
 }
@@ -191,11 +191,19 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
   }, [sessions, activeSessionId]);
 
   // ── Send message ──
-  const sendMessage = useCallback(async (overrideText?: string) => {
+  const sendMessage = useCallback(async (overrideText?: string, attachments?: string[]) => {
     const textToSend = (overrideText || input).trim();
-    if (!textToSend || isThinking) return;
+    if (!textToSend && (!attachments || attachments.length === 0)) return;
+    if (isThinking) return;
 
-    const userMsg: Message = { id: `user-${Date.now()}`, sender: 'user', text: textToSend };
+    // Format the message with attached paths for backward-compatible text storage
+    let displayMessage = textToSend;
+    if (attachments && attachments.length > 0) {
+      const attachmentsHeader = attachments.map(path => `[Attached: ${path}]`).join('\n');
+      displayMessage = `${attachmentsHeader}\n${textToSend}`;
+    }
+
+    const userMsg: Message = { id: `user-${Date.now()}`, sender: 'user', text: displayMessage };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsThinking(true);
@@ -208,7 +216,7 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       if (!sid) {
         const initialTitle = textToSend.length > 40 
           ? textToSend.substring(0, 40) + '...' 
-          : textToSend;
+          : textToSend || 'Document Query';
         sid = await createSession(initialTitle);
         setActiveSessionId(sid);
       } else {
@@ -218,7 +226,7 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
         if (isFirstMessage) {
           const truncatedTitle = textToSend.length > 40 
             ? textToSend.substring(0, 40) + '...' 
-            : textToSend;
+            : textToSend || 'Document Query';
           
           try {
             await renameSession(sid, truncatedTitle);
@@ -228,7 +236,7 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
         }
       }
 
-      const response = await sendPrompt(sid, textToSend);
+      const response = await sendPrompt(sid, textToSend, attachments);
       responseText = response.message;
     } catch (err) {
       console.error('[SessionContext] Prompt failed:', err);

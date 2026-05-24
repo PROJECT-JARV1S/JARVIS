@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export const MCPLoading = () => {
+interface MCPLoadingProps {
+  theme?: 'online' | 'offline';
+  compact?: boolean;
+}
+
+export const MCPLoading = ({ theme = 'offline', compact = false }: MCPLoadingProps) => {
   const text = "PROCESSING_COMMAND...";
   const [displayedText, setDisplayedText] = useState("");
   const [index, setIndex] = useState(0);
@@ -27,10 +32,15 @@ export const MCPLoading = () => {
     return () => clearTimeout(timeout);
   }, [index, text]);
 
+  const isOffline = theme === 'offline';
+  const textColorClass = isOffline ? 'text-offline-core' : 'text-theme-accent';
+  const bgCursorClass = isOffline ? 'bg-offline-core' : 'bg-theme-accent';
+  const cursorShadowClass = isOffline ? 'shadow-[0_0_8px_var(--color-offline-core)]' : 'shadow-[0_0_8px_var(--theme-accent)]';
+
   return (
-    <div className="flex px-4 py-4 items-center">
+    <div className={`flex ${compact ? 'p-0' : 'px-4 py-4'} items-center`}>
       <div className="relative inline-block font-mono">
-        <h2 className="text-offline-core text-xs tracking-[0.25em] uppercase flex items-center">
+        <h2 className={`${textColorClass} text-xs tracking-[0.25em] uppercase flex items-center`}>
           {/* The typed content */}
           <span className="opacity-80 font-bold">{displayedText}</span>
           
@@ -43,7 +53,7 @@ export const MCPLoading = () => {
                 repeat: Infinity, 
                 duration: 0.6,
               }}
-              className="inline-block w-[6px] h-[12px] bg-offline-core ml-2 translate-y-[0px] shadow-[0_0_8px_var(--color-offline-core)]"
+              className={`inline-block w-[6px] h-[12px] ${bgCursorClass} ml-2 translate-y-[0px] ${cursorShadowClass}`}
             />
           </AnimatePresence>
         </h2>

@@ -59,7 +59,7 @@ export const NeuralCommandCenter = ({ mode: _mode }: CommandCenterProps) => {
             >
               {/* CHAT LOG AREA */}
               <div className="w-full mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar">
-                <MCPMessageLog messages={messages} onClose={() => {}} />
+                <MCPMessageLog messages={messages} />
               </div>
 
               {/* NEURAL CORE: Reactive Animation above the bar */}

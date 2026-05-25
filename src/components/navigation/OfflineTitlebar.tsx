@@ -5,8 +5,6 @@ import { NeuralCore } from '@/features/mcp/components/NeuralCore';
 
 const MotionShield = motion(Shield);
 
-const MotionLock = motion(Lock);
-
 export const OfflineTitlebar = () => {
   const { systemInfo } = useSystemInfo();
   const formattedTime = systemInfo 
@@ -39,27 +37,6 @@ export const OfflineTitlebar = () => {
           />
           <span className="font-mono text-xs text-offline-core tracking-[0.15em] font-bold">
             LOCAL_AIRGAP
-          </span>
-        </div>
-
-
-        <div id="secure-badge" className="flex items-center gap-2.5 px-3 py-1 bg-offline-core/10 border border-offline-core/30 rounded-md shadow-[0_0_10px_rgba(var(--color-offline-core-rgb),0.1)] hidden md:flex">
-          <MotionLock 
-            size={12} 
-            className="text-offline-core"
-            animate={{ 
-              opacity: [0.4, 1, 0.4],
-              scale: [0.95, 1.05, 0.95]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 0.5
-            }}
-          />
-          <span className="font-mono text-xs text-offline-core tracking-[0.15em] font-bold uppercase">
-            JARVIS_SECURE_01
           </span>
         </div>
       </div>

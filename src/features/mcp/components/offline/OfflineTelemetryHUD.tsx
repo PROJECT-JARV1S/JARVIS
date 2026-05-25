@@ -164,7 +164,10 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
           try {
             info = await getPlaybackInfo();
           } catch (e: any) {
-            console.warn('getPlaybackInfo failed:', e);
+            const errMsg = String(e);
+            if (!errMsg.includes('0x00000000') && !errMsg.includes('completed successfully')) {
+              console.warn('getPlaybackInfo failed:', e);
+            }
           }
 
           if (!active) return;
@@ -254,14 +257,32 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
     }
     try {
       await mediaControls.togglePlayPause();
-      const info = await getPlaybackInfo();
-      if (info) {
-        setIsPlaying(info.status === PlaybackStatus.Playing);
-      } else {
-        setIsPlaying(!isPlaying);
+      
+      // Query the updated state using library functions, suppressing false-positive success errors
+      let newPlaying = !isPlaying;
+      try {
+        const info = await getPlaybackInfo();
+        if (info) {
+          newPlaying = info.status === PlaybackStatus.Playing;
+        } else {
+          const status = await getPlaybackStatus();
+          newPlaying = status === PlaybackStatus.Playing;
+        }
+      } catch (e) {
+        // Fallback to getPlaybackStatus if getPlaybackInfo throws
+        try {
+          const status = await getPlaybackStatus();
+          newPlaying = status === PlaybackStatus.Playing;
+        } catch (statusErr) {
+          newPlaying = !isPlaying;
+        }
       }
+      setIsPlaying(newPlaying);
     } catch (err) {
-      console.warn('Failed to toggle play/pause:', err);
+      const errMsg = String(err);
+      if (!errMsg.includes('0x00000000') && !errMsg.includes('completed successfully')) {
+        console.warn('Failed to toggle play/pause:', err);
+      }
       setIsPlaying(!isPlaying);
     }
   };

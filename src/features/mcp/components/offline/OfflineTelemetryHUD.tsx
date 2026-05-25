@@ -240,6 +240,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
       };
     } else {
       // Fallback: Mock timer loop for development/testing
+      setHasActiveMedia(true);
       const interval = setInterval(() => {
         if (isPlaying) {
           setTrackProgress(prev => (prev >= trackDuration ? 0 : prev + 1));

@@ -49,6 +49,7 @@ export const OfflineSidebar = ({ onSettingsClick }: OfflineSidebarProps) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, sessionId: string) => {
+    e.stopPropagation();
     if (e.key === 'Enter') {
       handleSave(sessionId);
     } else if (e.key === 'Escape') {

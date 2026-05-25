@@ -240,6 +240,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
       };
     } else {
       // Fallback: Mock timer loop for development/testing
+      setHasActiveMedia(true);
       const interval = setInterval(() => {
         if (isPlaying) {
           setTrackProgress(prev => (prev >= trackDuration ? 0 : prev + 1));
@@ -305,7 +306,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
 
   // ─── Renderers: Hardware Telemetry ───
   const renderHardwareTelemetry = (isFloated: boolean, onDock: () => void, dragHandleProps?: any, sidebarDragHandleProps?: any) => (
-    <div className={`${isFloated ? 'p-4' : ''}`}>
+    <div className={`${isFloated ? 'p-4 h-full flex flex-col overflow-hidden' : ''}`}>
       <div
         {...dragHandleProps}
         className={`flex items-center gap-2 mb-4 select-none ${isFloated ? 'cursor-grab active:cursor-grabbing bg-black/10 -mx-4 -mt-4 p-4 border-b border-white/5' : ''}`}
@@ -347,7 +348,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
         )}
       </div>
 
-      <div className="space-y-4 bg-black/20 border border-white/5 rounded-lg p-3">
+      <div className={`space-y-4 bg-black/20 border border-white/5 rounded-lg p-3 ${isFloated ? 'flex-1 overflow-y-auto custom-scrollbar' : ''}`}>
         <TelemetryBar label="CPU" value={cpu} icon={<Cpu size={12} />} warning={cpu > 85} />
         <TelemetryBar label="RAM" value={ram} icon={<MemoryStick size={12} />} warning={ram > 90} />
         <TelemetryBar label="Disk" value={disk} icon={<HardDrive size={12} />} warning={disk > 90} />
@@ -365,7 +366,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
 
   // ─── Renderers: Control Deck ───
   const renderControlDeck = (isFloated: boolean, onDock: () => void, dragHandleProps?: any, sidebarDragHandleProps?: any) => (
-    <div className={`${isFloated ? 'p-4' : ''}`}>
+    <div className={`${isFloated ? 'p-4 h-full flex flex-col overflow-hidden' : ''}`}>
       <div
         {...dragHandleProps}
         className={`flex items-center gap-2 mb-3 select-none ${isFloated ? 'cursor-grab active:cursor-grabbing bg-black/10 -mx-4 -mt-4 p-4 border-b border-white/5' : ''}`}
@@ -402,7 +403,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
         )}
       </div>
 
-      <div className="bg-black/20 border border-white/5 rounded-lg p-3 space-y-3">
+      <div className={`bg-black/20 border border-white/5 rounded-lg p-3 space-y-3 ${isFloated ? 'flex-1 overflow-y-auto custom-scrollbar' : ''}`}>
         {/* Volume Slider */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -491,7 +492,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
     );
 
     return (
-      <div className={`${isFloated ? 'p-4' : ''}`}>
+      <div className={`${isFloated ? 'p-4 h-full flex flex-col overflow-hidden' : ''}`}>
         <div
           {...dragHandleProps}
           className={`flex items-center gap-2 mb-3 select-none ${isFloated ? 'cursor-grab active:cursor-grabbing bg-black/10 -mx-4 -mt-4 p-4 border-b border-white/5' : ''}`}
@@ -531,65 +532,75 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
           )}
         </div>
 
-        <div className="bg-black/20 border border-white/5 rounded-lg p-3 space-y-3">
+        <div className={`bg-black/20 border border-white/5 rounded-lg p-3 space-y-3 ${isFloated ? 'flex-1 overflow-y-auto custom-scrollbar' : ''}`}>
           <div className="flex gap-3 items-center">
             {/* Album Cover / CD Cover */}
-            <div className="w-12 h-12 rounded bg-gradient-to-br from-offline-core/20 to-offline-core/5 border border-offline-core/25 flex items-center justify-center relative overflow-hidden shrink-0 shadow-lg">
+            <button
+              onClick={handleTogglePlayPause}
+              disabled={isMediaSupported && !hasActiveMedia}
+              className={`w-16 h-16 rounded bg-gradient-to-br from-offline-core/20 to-offline-core/5 border border-offline-core/25 flex items-center justify-center relative overflow-hidden shrink-0 shadow-lg group/cover transition-all duration-300 outline-none focus:border-offline-core/50 ${
+                isMediaSupported && !hasActiveMedia
+                  ? 'cursor-not-allowed opacity-50'
+                  : 'cursor-pointer hover:border-offline-core/50 hover:shadow-[0_0_12px_rgba(244,244,245,0.15)]'
+              }`}
+              title={isMediaSupported && !hasActiveMedia ? undefined : (isPlaying ? "Pause" : "Play")}
+            >
               {coverArt ? (
                 <img
                   src={coverArt}
                   alt="Album Art"
-                  className="w-full h-full object-cover relative z-20"
+                  className="w-full h-full object-cover relative z-20 transition-transform duration-500 group-hover/cover:scale-105"
                 />
               ) : (
-                <>
+                <div className="relative w-full h-full flex items-center justify-center">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-10" />
                   <motion.div
-                    animate={isPlaying ? { rotate: 360 } : {}}
-                    transition={isPlaying ? { duration: 15, repeat: Infinity, ease: "linear" } : {}}
-                    className="w-8 h-8 rounded-full border border-dashed border-offline-core/30 flex items-center justify-center opacity-65"
+                    animate={isPlaying && hasActiveMedia ? { rotate: 360 } : {}}
+                    transition={isPlaying && hasActiveMedia ? { duration: 15, repeat: Infinity, ease: "linear" } : {}}
+                    className="w-10 h-10 rounded-full border border-dashed border-offline-core/30 flex items-center justify-center opacity-65"
                   >
-                    <div className="w-3.5 h-3.5 rounded-full border border-offline-core/20 bg-black/60" />
+                    <div className="w-4 h-4 rounded-full border border-offline-core/20 bg-black/60" />
                   </motion.div>
                   <div className="absolute inset-0 bg-offline-core/5 opacity-50 animate-pulse" />
-                </>
+                </div>
               )}
-            </div>
+              {/* Play/Pause Hover Overlay */}
+              {(!isMediaSupported || hasActiveMedia) && (
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/cover:opacity-100 flex items-center justify-center z-30 transition-opacity duration-300">
+                  {isPlaying ? (
+                    <Pause size={20} className="text-white drop-shadow-[0_0_8px_rgba(244,244,245,0.6)]" />
+                  ) : (
+                    <Play size={20} className="text-white ml-0.5 drop-shadow-[0_0_8px_rgba(244,244,245,0.6)]" />
+                  )}
+                </div>
+              )}
+            </button>
 
             {/* Track details */}
-            <div className="flex-1 min-w-0 flex flex-col justify-center h-12 py-0.5">
+            <div className="flex-1 min-w-0 flex flex-col justify-center py-0.5">
               <h4 className="text-xs font-mono font-bold text-primary-txt truncate uppercase tracking-wide leading-tight">
                 {isMediaSupported && !hasActiveMedia ? 'Awaiting Media' : trackTitle}
               </h4>
-              <p className="text-[9px] font-mono text-secondary-txt/60 truncate uppercase tracking-widest mt-0.5">
+              <p className="text-[9px] font-mono text-secondary-txt/60 truncate uppercase tracking-widest mt-1">
                 {isMediaSupported && !hasActiveMedia ? 'System Idle' : trackArtist}
               </p>
             </div>
 
             {/* Live Audio Visualizer */}
-            <div className="h-12 flex items-center shrink-0">
+            <div className="h-16 flex items-center shrink-0">
               <AudioVisualizer isPlaying={isPlaying && hasActiveMedia} />
             </div>
-
-            {/* Play/Pause Button on the same row! */}
-            <button
-              onClick={handleTogglePlayPause}
-              className="w-8 h-8 rounded-full bg-offline-core/10 border border-offline-core/30 flex items-center justify-center text-offline-core hover:bg-offline-core/25 active:scale-95 transition-all shadow-[0_0_10px_rgba(244,244,245,0.05)] cursor-pointer shrink-0"
-              title={isPlaying ? "Pause" : "Play"}
-            >
-              {isPlaying ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
-            </button>
           </div>
 
           {/* Progress Slider (Row 2) */}
-          <div className="space-y-1 pt-0.5">
-            <div className="h-1 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+          <div className="space-y-1.5 pt-1">
+            <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden border border-white/10 relative">
               <div
-                className="h-full bg-offline-core rounded-full"
+                className="h-full bg-gradient-to-r from-offline-core/60 to-offline-core rounded-full shadow-[0_0_8px_rgba(244,244,245,0.3)]"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <div className="flex items-center justify-between text-[8px] font-mono text-secondary-txt/55 font-semibold tracking-wider">
+            <div className="flex items-center justify-between text-[8px] font-mono text-secondary-txt/70 font-bold tracking-wider">
               <span>{formatTime(trackProgress)}</span>
               <span>{formatDuration(trackDuration)}</span>
             </div>
@@ -666,14 +677,13 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
       </button>
 
       {/* Invisible Viewport Bounds Constraint for Dragging */}
-      {(isCpuFloated || isControlFloated || isSpotifyFloated) && (
-        <div ref={viewportRef} className="fixed inset-0 pointer-events-none z-30" />
-      )}
+      <div ref={viewportRef} className="fixed inset-0 pointer-events-none z-30" />
 
       {/* ── Floating Panels Rendered outside Sidebar ── */}
       <AnimatePresence>
         {isCpuFloated && (
           <motion.div
+            key="cpu-float"
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -683,16 +693,26 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
             dragConstraints={viewportRef}
             dragMomentum={false}
             dragElastic={0.05}
-            className="fixed top-24 right-[20rem] z-40 w-72 bg-offline-surface-dark border border-offline-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md overflow-hidden pointer-events-auto"
+            className="fixed top-24 right-[20rem] z-40 w-72 bg-offline-surface-dark border border-offline-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md overflow-hidden pointer-events-auto flex flex-col"
+            style={{
+              resize: 'both',
+              minWidth: '260px',
+              minHeight: '200px',
+              maxWidth: '480px',
+              maxHeight: '500px'
+            }}
           >
             {renderHardwareTelemetry(true, () => setIsCpuFloated(false), {
               onPointerDown: (e: React.PointerEvent) => cpuDragControls.start(e)
             })}
+            {/* Custom visual indicator for resize in bottom-right corner */}
+            <div className="absolute bottom-1 right-1 w-2.5 h-2.5 border-r-2 border-b-2 border-offline-core/25 pointer-events-none rounded-br-sm" />
           </motion.div>
         )}
 
         {isSpotifyFloated && (
           <motion.div
+            key="spotify-float"
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -702,16 +722,26 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
             dragConstraints={viewportRef}
             dragMomentum={false}
             dragElastic={0.05}
-            className="fixed top-[22rem] right-[20rem] z-40 w-72 bg-offline-surface-dark border border-offline-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md overflow-hidden pointer-events-auto"
+            className="fixed top-[22rem] right-[20rem] z-40 w-72 bg-offline-surface-dark border border-offline-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md overflow-hidden pointer-events-auto flex flex-col"
+            style={{
+              resize: 'both',
+              minWidth: '260px',
+              minHeight: '160px',
+              maxWidth: '480px',
+              maxHeight: '500px'
+            }}
           >
             {renderSpotifyDeck(true, () => setIsSpotifyFloated(false), {
               onPointerDown: (e: React.PointerEvent) => spotifyDragControls.start(e)
             })}
+            {/* Custom visual indicator for resize in bottom-right corner */}
+            <div className="absolute bottom-1 right-1 w-2.5 h-2.5 border-r-2 border-b-2 border-offline-core/25 pointer-events-none rounded-br-sm" />
           </motion.div>
         )}
 
         {isControlFloated && (
           <motion.div
+            key="control-float"
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -721,11 +751,20 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
             dragConstraints={viewportRef}
             dragMomentum={false}
             dragElastic={0.05}
-            className="fixed bottom-24 right-[20rem] z-40 w-72 bg-offline-surface-dark border border-offline-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md overflow-hidden pointer-events-auto"
+            className="fixed bottom-24 right-[20rem] z-40 w-72 bg-offline-surface-dark border border-offline-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-md overflow-hidden pointer-events-auto flex flex-col"
+            style={{
+              resize: 'both',
+              minWidth: '260px',
+              minHeight: '220px',
+              maxWidth: '480px',
+              maxHeight: '500px'
+            }}
           >
             {renderControlDeck(true, () => setIsControlFloated(false), {
               onPointerDown: (e: React.PointerEvent) => controlDragControls.start(e)
             })}
+            {/* Custom visual indicator for resize in bottom-right corner */}
+            <div className="absolute bottom-1 right-1 w-2.5 h-2.5 border-r-2 border-b-2 border-offline-core/25 pointer-events-none rounded-br-sm" />
           </motion.div>
         )}
       </AnimatePresence>

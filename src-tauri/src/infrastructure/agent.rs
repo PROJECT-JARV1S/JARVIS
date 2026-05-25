@@ -142,8 +142,20 @@ async fn build_agent(config: &AppConfig) -> Result<AppAgent, AppError> {
 
     if Path::new(&config.mcp_config_path).exists() {
         if let Ok(mcp_config) = McpConfig::from_path(&config.mcp_config_path) {
-            if let Ok(mcp_client) = McpClient::new(mcp_config).tools().await {
-                tools.extend(mcp_client);
+            for (name, server_def) in mcp_config.mcp_servers {
+                let mut single_servers = std::collections::HashMap::new();
+                single_servers.insert(name.clone(), server_def);
+                let single_config = McpConfig {
+                    mcp_servers: single_servers,
+                };
+                match McpClient::new(single_config).tools().await {
+                    Ok(mcp_tools) => {
+                        tools.extend(mcp_tools);
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to connect to MCP server {}: {:?}", name, e);
+                    }
+                }
             }
         }
     }

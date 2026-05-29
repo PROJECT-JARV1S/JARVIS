@@ -41,5 +41,5 @@ uuid = { version = "1.23.1", features = ["v4"] }
 chrono = "0.4.44"
 rig-core = "0.36.0"
 sysinfo = "0.39.2"
-tauri-plugin-media = "0.1.1"
+tauri-plugin-media = { git = "https://github.com/skaarfundgandr/tauri-plugin-media.git", version = "0.1.1" }
 tauri-plugin-dialog = "2"

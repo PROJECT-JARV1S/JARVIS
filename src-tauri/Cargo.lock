@@ -5321,9 +5321,8 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-media"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12ec46ba7e1a03acbf9c43fbe360ce80577e8da208acd8680746d18c3bcdeaca"
+version = "0.1.2"
+source = "git+https://github.com/skaarfundgandr/tauri-plugin-media.git#b0cae69727f60cfaeef8eafb50ddb16f841b9a5a"
 dependencies = [
  "base64 0.22.1",
  "cocoa",

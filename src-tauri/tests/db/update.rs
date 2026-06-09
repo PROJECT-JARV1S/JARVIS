@@ -1,7 +1,7 @@
 use crate::db::{cleanup, setup_db};
 use jarvis_lib::domain::errors::AppError;
 use jarvis_lib::infrastructure::repository::SessionRepository;
-use rig::message::Message;
+use rig_core::message::Message;
 
 // ---------------------------------------------------------------------------
 // rename_session

@@ -1,7 +1,7 @@
 use crate::db::{cleanup, setup_db, unique_db_path};
 use jarvis_lib::infrastructure::db::DatabaseManager;
 use jarvis_lib::infrastructure::repository::SessionRepository;
-use rig::message::Message;
+use rig_core::message::Message;
 
 #[test]
 fn database_is_reopenable_and_persists_data() {

@@ -1,6 +1,6 @@
 use crate::db::{cleanup, setup_db};
 use jarvis_lib::infrastructure::repository::SessionRepository;
-use rig::message::Message;
+use rig_core::message::Message;
 
 #[test]
 fn cascade_delete_removes_session_history() {

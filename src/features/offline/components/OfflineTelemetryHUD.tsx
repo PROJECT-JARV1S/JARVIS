@@ -107,6 +107,10 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
   const [spotifyPos, setSpotifyPos] = useState({ x: typeof window !== 'undefined' ? window.innerWidth - 608 : 800, y: 352 });
   const [controlPos, setControlPos] = useState({ x: typeof window !== 'undefined' ? window.innerWidth - 608 : 800, y: typeof window !== 'undefined' ? window.innerHeight - 384 : 500 });
 
+  const cpuDragStartPos = useRef({ x: 0, y: 0 });
+  const spotifyDragStartPos = useRef({ x: 0, y: 0 });
+  const controlDragStartPos = useRef({ x: 0, y: 0 });
+
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
@@ -176,9 +180,10 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
             dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }}
             dragElastic={0}
             dragMomentum={false}
+            onDragStart={() => { cpuDragStartPos.current = cpuPos; }}
             onDrag={(_, info) => {
-              const x = Math.max(0, Math.min(window.innerWidth - 288, info.point.x));
-              const y = Math.max(0, Math.min(window.innerHeight - 100, info.point.y));
+              const x = Math.max(0, Math.min(window.innerWidth - 288, cpuDragStartPos.current.x + info.offset.x));
+              const y = Math.max(0, Math.min(window.innerHeight - 100, cpuDragStartPos.current.y + info.offset.y));
               setCpuPos({ x, y });
             }}
           >
@@ -212,9 +217,10 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
             dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }}
             dragElastic={0}
             dragMomentum={false}
+            onDragStart={() => { spotifyDragStartPos.current = spotifyPos; }}
             onDrag={(_, info) => {
-              const x = Math.max(0, Math.min(window.innerWidth - 288, info.point.x));
-              const y = Math.max(0, Math.min(window.innerHeight - 100, info.point.y));
+              const x = Math.max(0, Math.min(window.innerWidth - 288, spotifyDragStartPos.current.x + info.offset.x));
+              const y = Math.max(0, Math.min(window.innerHeight - 100, spotifyDragStartPos.current.y + info.offset.y));
               setSpotifyPos({ x, y });
             }}
           >
@@ -250,9 +256,10 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
             dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }}
             dragElastic={0}
             dragMomentum={false}
+            onDragStart={() => { controlDragStartPos.current = controlPos; }}
             onDrag={(_, info) => {
-              const x = Math.max(0, Math.min(window.innerWidth - 288, info.point.x));
-              const y = Math.max(0, Math.min(window.innerHeight - 100, info.point.y));
+              const x = Math.max(0, Math.min(window.innerWidth - 288, controlDragStartPos.current.x + info.offset.x));
+              const y = Math.max(0, Math.min(window.innerHeight - 100, controlDragStartPos.current.y + info.offset.y));
               setControlPos({ x, y });
             }}
           >

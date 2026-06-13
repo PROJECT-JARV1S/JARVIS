@@ -165,7 +165,12 @@ export const OfflineSidebar = ({ onSettingsClick }: OfflineSidebarProps) => {
       <div className="flex-1 flex flex-col overflow-hidden px-2">
         {/* New Session Button */}
         <button
-          onClick={createNewSession}
+          onClick={() => {
+            createNewSession();
+            if (location.pathname !== '/') {
+              navigate('/');
+            }
+          }}
           className="flex items-center h-9 rounded-md transition-all duration-200 overflow-hidden group text-secondary-txt border border-dashed border-white/10 hover:border-offline-core/40 hover:bg-offline-core/5 hover:text-offline-core mb-2 shrink-0 cursor-pointer"
           title={!isOpen ? "New Session" : ""}
         >
@@ -226,6 +231,9 @@ export const OfflineSidebar = ({ onSettingsClick }: OfflineSidebarProps) => {
                   onClick={() => {
                     if (editingSessionId !== session.id) {
                       switchSession(session.id);
+                      if (location.pathname !== '/') {
+                        navigate('/');
+                      }
                     }
                   }}
                   onKeyDown={(e) => {
@@ -233,6 +241,9 @@ export const OfflineSidebar = ({ onSettingsClick }: OfflineSidebarProps) => {
                       e.preventDefault();
                       if (editingSessionId !== session.id) {
                         switchSession(session.id);
+                        if (location.pathname !== '/') {
+                          navigate('/');
+                        }
                       }
                     }
                   }}

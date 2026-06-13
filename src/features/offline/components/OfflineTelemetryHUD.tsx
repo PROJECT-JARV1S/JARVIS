@@ -54,8 +54,14 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
 
   const {
     isPlaying, trackTitle, trackArtist, trackProgress, trackDuration,
-    coverArt, isMediaSupported, hasActiveMedia, togglePlayPause,
+    coverArt, isMediaSupported, hasActiveMedia, mediaSource, togglePlayPause,
   } = useMediaSession();
+
+  const sourceBadge = (
+    <span className="ml-auto text-[8px] font-mono text-offline-core/50 uppercase tracking-widest bg-offline-core/5 border border-offline-core/10 px-1.5 py-0.5 rounded">
+      {isMediaSupported && !hasActiveMedia ? 'Inactive' : mediaSource}
+    </span>
+  );
 
   const cpu = systemInfo ? Math.round(systemInfo.cpu_usage) : 0;
   const ram = systemInfo ? Math.round(systemInfo.ram_usage) : 0;
@@ -96,20 +102,24 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
   const controlDragStartPos = useRef({ x: 0, y: 0 });
 
   const formatTime = (secs: number) => {
+    if (secs < 0) return '0:00';
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   const formatDuration = (secs: number) => {
+    if (secs <= 0) return '--:--';
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const progressPercent = trackDuration > 0 ? (trackProgress / trackDuration) * 100 : 0;
+  const durationKnown = trackDuration > 0;
+  const progressPercent = durationKnown ? Math.min(100, (trackProgress / trackDuration) * 100) : 0;
+  const showLiveShimmer = !durationKnown && isPlaying && hasActiveMedia;
 
-  const renderPanelHeader = (title: string, icon: React.ReactNode, isFloated: boolean, onFloat: () => void, onDock: () => void, dragControls?: ReturnType<typeof useDragControls>) => (
+  const renderPanelHeader = (title: string, icon: React.ReactNode, isFloated: boolean, onFloat: () => void, onDock: () => void, dragControls?: ReturnType<typeof useDragControls>, badge?: React.ReactNode) => (
     <div
       className={`flex items-center gap-2 mb-3 select-none ${isFloated ? 'cursor-grab active:cursor-grabbing bg-black/10 -mx-4 -mt-4 p-4 border-b border-white/5' : ''}`}
       onPointerDown={isFloated && dragControls ? (e) => { e.preventDefault(); dragControls.start(e); } : undefined}
@@ -125,12 +135,13 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
         </>
       )}
       <h3 className="text-xs font-mono uppercase tracking-[0.15em] text-offline-core/80 font-bold">{title}</h3>
+      {badge}
       {isFloated ? (
-        <button onClick={(e) => { e.stopPropagation(); onDock(); }} className="ml-auto text-secondary-txt/60 hover:text-error-red transition-colors p-1 rounded hover:bg-white/5 cursor-pointer" title="Dock Panel">
+        <button onClick={(e) => { e.stopPropagation(); onDock(); }} className={`${badge ? 'ml-2' : 'ml-auto'} text-secondary-txt/60 hover:text-error-red transition-colors p-1 rounded hover:bg-white/5 cursor-pointer`} title="Dock Panel">
           <X size={14} />
         </button>
       ) : (
-        <button onClick={onFloat} className="ml-auto text-secondary-txt/40 hover:text-offline-core transition-colors p-1 rounded hover:bg-white/5 cursor-pointer" title="Float Panel">
+        <button onClick={onFloat} className={`${badge ? 'ml-2' : 'ml-auto'} text-secondary-txt/40 hover:text-offline-core transition-colors p-1 rounded hover:bg-white/5 cursor-pointer`} title="Float Panel">
           <ExternalLink size={12} />
         </button>
       )}
@@ -252,7 +263,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
             }}
           >
             <div className="p-4 h-full flex flex-col overflow-hidden">
-              {renderPanelHeader('Media_Monitor', <Music size={12} className="text-offline-core/60" />, true, () => {}, () => setIsSpotifyFloated(false), spotifyDragControls)}
+              {renderPanelHeader('Media_Monitor', <Music size={12} className="text-offline-core/60" />, true, () => {}, () => setIsSpotifyFloated(false), spotifyDragControls, sourceBadge)}
               <div className="bg-black/20 border border-white/5 rounded-lg p-3 space-y-3 flex-1">
                 <MediaContent
                   isMediaSupported={isMediaSupported} hasActiveMedia={hasActiveMedia}
@@ -260,6 +271,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
                   trackTitle={trackTitle} trackArtist={trackArtist}
                   trackProgress={trackProgress} trackDuration={trackDuration}
                   progressPercent={progressPercent}
+                  durationKnown={durationKnown} showLiveShimmer={showLiveShimmer}
                   togglePlayPause={togglePlayPause}
                   formatTime={formatTime} formatDuration={formatDuration}
                 />
@@ -362,7 +374,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
                           <PanelPlaceholder icon={<Music size={18} />} title="Media_Floated" description="Panel is in floating mode" buttonText="[Dock_Back]" onAction={() => setIsSpotifyFloated(false)} />
                         ) : (
                           <div>
-                            {renderPanelHeader('Media_Monitor', <Music size={12} className="text-offline-core/60" />, false, () => setIsSpotifyFloated(true), () => {})}
+                            {renderPanelHeader('Media_Monitor', <Music size={12} className="text-offline-core/60" />, false, () => setIsSpotifyFloated(true), () => {}, undefined, sourceBadge)}
                             <div className="bg-black/20 border border-white/5 rounded-lg p-3 space-y-3">
                               <MediaContent
                                 isMediaSupported={isMediaSupported} hasActiveMedia={hasActiveMedia}
@@ -370,6 +382,7 @@ export const OfflineTelemetryHUD = ({ isOpen, onToggle }: OfflineTelemetryHUDPro
                                 trackTitle={trackTitle} trackArtist={trackArtist}
                                 trackProgress={trackProgress} trackDuration={trackDuration}
                                 progressPercent={progressPercent}
+                                durationKnown={durationKnown} showLiveShimmer={showLiveShimmer}
                                 togglePlayPause={togglePlayPause}
                                 formatTime={formatTime} formatDuration={formatDuration}
                               />
@@ -410,6 +423,8 @@ interface MediaContentProps {
   trackProgress: number;
   trackDuration: number;
   progressPercent: number;
+  durationKnown: boolean;
+  showLiveShimmer: boolean;
   togglePlayPause: () => void;
   formatTime: (secs: number) => string;
   formatDuration: (secs: number) => string;
@@ -418,6 +433,7 @@ interface MediaContentProps {
 const MediaContent = ({
   isMediaSupported, hasActiveMedia, isPlaying, coverArt,
   trackTitle, trackArtist, trackProgress, trackDuration, progressPercent,
+  durationKnown, showLiveShimmer,
   togglePlayPause, formatTime, formatDuration
 }: MediaContentProps) => (
   <>
@@ -460,16 +476,26 @@ const MediaContent = ({
         </p>
       </div>
       <div className="h-16 flex items-center shrink-0">
-        <AudioVisualizer barCount={6} />
+        <AudioVisualizer barCount={6} isPlaying={isPlaying && hasActiveMedia} />
       </div>
     </div>
     <div className="space-y-1.5 pt-1">
       <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden border border-white/10 relative">
-        <div className="h-full bg-gradient-to-r from-offline-core/60 to-offline-core rounded-full shadow-[0_0_8px_rgba(244,244,245,0.3)]" style={{ width: `${progressPercent}%` }} />
+        {durationKnown ? (
+          <div className="h-full bg-gradient-to-r from-offline-core/60 to-offline-core rounded-full shadow-[0_0_8px_rgba(244,244,245,0.3)]" style={{ width: `${progressPercent}%` }} />
+        ) : (
+          <>
+            <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-offline-core/60 to-offline-core rounded-full shadow-[0_0_8px_rgba(244,244,245,0.3)]" style={{ animation: showLiveShimmer ? 'var(--animate-media-shimmer)' : 'none' }} />
+            {showLiveShimmer && <div className="absolute inset-0 bg-offline-core/5 animate-pulse" />}
+          </>
+        )}
       </div>
       <div className="flex items-center justify-between text-[8px] font-mono text-secondary-txt/70 font-bold tracking-wider">
         <span>{formatTime(trackProgress)}</span>
-        <span>{formatDuration(trackDuration)}</span>
+        <span className="flex items-center gap-1">
+          {showLiveShimmer && <span className="w-1 h-1 rounded-full bg-offline-core animate-pulse" />}
+          {formatDuration(trackDuration)}
+        </span>
       </div>
     </div>
   </>

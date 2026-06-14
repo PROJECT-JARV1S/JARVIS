@@ -215,7 +215,7 @@ export const OfflineSidebar = ({ onSettingsClick }: OfflineSidebarProps) => {
         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1">
           <AnimatePresence mode="popLayout">
             {sessions.map((session, index) => {
-              const isActive = session.id === activeSessionId;
+              const isActive = session.id === activeSessionId && location.pathname === '/';
               const title = session.title || 'Untitled Session';
               const displayTitle = title.length > 28 ? title.substring(0, 28) + '...' : title;
 

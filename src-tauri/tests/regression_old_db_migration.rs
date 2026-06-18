@@ -34,7 +34,7 @@ fn run_migrations_on_old_rusqlite_db_preserves_data() {
 
     eprintln!("Created old-style DB at {:?}", path);
     eprintln!("Calling run_migrations...");
-    run_migrations(path.to_str().unwrap());
+    run_migrations(path.to_str().unwrap()).expect("run_migrations failed");
     eprintln!("run_migrations returned successfully");
 
     let conn = rusqlite::Connection::open(&path).unwrap();
@@ -69,7 +69,7 @@ fn run_migrations_on_fresh_db_creates_schema_normally() {
     let _ = fs::remove_file(format!("{}-wal", path.display()));
     let _ = fs::remove_file(format!("{}-shm", path.display()));
 
-    run_migrations(path.to_str().unwrap());
+    run_migrations(path.to_str().unwrap()).expect("run_migrations failed (fresh db)");
 
     let conn = rusqlite::Connection::open(&path).unwrap();
     let tables: Vec<String> = conn
@@ -96,8 +96,8 @@ fn run_migrations_called_twice_does_not_fail() {
     let _ = fs::remove_file(format!("{}-wal", path.display()));
     let _ = fs::remove_file(format!("{}-shm", path.display()));
 
-    run_migrations(path.to_str().unwrap());
-    run_migrations(path.to_str().unwrap());
+    run_migrations(path.to_str().unwrap()).expect("run_migrations failed (fresh)");
+    run_migrations(path.to_str().unwrap()).expect("run_migrations failed (second)");
 
     let conn = rusqlite::Connection::open(&path).unwrap();
     let count: i64 = conn
@@ -105,7 +105,9 @@ fn run_migrations_called_twice_does_not_fail() {
             r.get(0)
         })
         .unwrap();
-    assert_eq!(count, 1);
+    // Two embedded migrations exist (0001_initial_schema + permission_preferences);
+    // calling run_migrations twice must not create duplicates.
+    assert_eq!(count, 3);
     drop(conn);
 
     let _ = fs::remove_file(&path);

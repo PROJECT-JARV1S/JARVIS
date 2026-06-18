@@ -35,7 +35,7 @@ async fn test_database_manager() {
 
     let _ = fs::remove_file(&db_path);
 
-    run_migrations(db_path.to_str().unwrap());
+    run_migrations(db_path.to_str().unwrap()).expect("run_migrations failed");
     let pool = create_pool(db_path.to_str().unwrap());
     let repo = SessionRepository::with_pool(pool);
 
@@ -128,18 +128,18 @@ fn test_set_provider() {
     let _ = fs::remove_file(&config_path);
 
     let config = AppConfig::default();
-    let mutex = tokio::sync::Mutex::new(config);
+    let rw_lock = tokio::sync::RwLock::new(config);
 
     tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(jarvis_lib::handlers::chat::set_provider(
             "gemini".to_string(),
-            &mutex,
+            &rw_lock,
             Some(&config_path),
         ))
         .unwrap();
 
-    let updated = mutex.blocking_lock();
+    let updated = rw_lock.blocking_read();
     assert_eq!(updated.provider.to_string(), "gemini");
 
     let loaded = AppConfig::load_from(&config_path).unwrap();

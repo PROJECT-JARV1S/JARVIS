@@ -64,3 +64,20 @@ export interface AppConfig {
   read_extensions: string[];
   write_extensions: string[];
 }
+
+export interface PermissionRequest {
+  request_id: string;
+  tool_name: string;
+  description: string;
+}
+
+export type PermissionResponse =
+  | { kind: 'allow' }
+  | { kind: 'deny'; reason: string }
+  | { kind: 'allow_always' }
+  | { kind: 'deny_always' };
+
+export interface PermissionPreference {
+  tool_name: string;
+  decision: 'allow' | 'deny';
+}

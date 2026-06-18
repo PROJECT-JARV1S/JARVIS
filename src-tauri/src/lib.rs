@@ -8,8 +8,12 @@ use crate::commands::chat::*;
 use crate::commands::config::*;
 use crate::commands::documents::*;
 use crate::commands::hardware::*;
+use crate::commands::permission::*;
 use crate::commands::system::*;
 use crate::commands::voice::*;
+use crate::infrastructure::database::PermissionRepository;
+use crate::infrastructure::permission_gate::AppPermissionGate;
+use std::sync::Arc;
 use tauri::Manager;
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
@@ -82,6 +86,25 @@ pub fn run() {
                 infrastructure::system::start_telemetry_worker(app_handle);
             });
 
+            // Permission subsystem — depends on DB pool and AppHandle
+            let pool = infrastructure::database::global_pool();
+            let prefs_repo = Arc::new(PermissionRepository::new(pool));
+            let gate = Arc::new(AppPermissionGate::new(
+                Arc::clone(&prefs_repo),
+                app.handle().clone(),
+            ));
+            app.manage(gate.clone());
+            app.manage(prefs_repo);
+
+            // Preload permission preferences into the gate's in-memory cache.
+            // Runs asynchronously so it does not block app setup.
+            let gate_for_preload = gate.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = gate_for_preload.preload_preferences().await {
+                    eprintln!("Warning: failed to preload permission preferences: {e}");
+                }
+            });
+
             // Prebuild the agent in the background so it's ready when the user chats
             let prebuild_app = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -125,6 +148,11 @@ pub fn run() {
             list_directory,
             glob_search,
             grep_search,
+            // Permission System
+            respond_to_permission,
+            get_permission_preferences,
+            set_permission_preference,
+            delete_permission_preference,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -22,6 +22,10 @@ pub enum AppError {
     /// General runtime error (DB, I/O, serialization, etc.).
     #[error("System error: {0}")]
     SystemError(String),
+
+    /// Permission subsystem error (e.g. gate timeout, preference lookup failure).
+    #[error("Permission error: {0}")]
+    PermissionError(String),
 }
 
 /// Converts diesel query errors into [`AppError::SystemError`].

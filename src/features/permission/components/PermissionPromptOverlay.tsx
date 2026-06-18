@@ -1,0 +1,70 @@
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShieldAlert } from 'lucide-react';
+import { usePermission } from '../PermissionContext';
+
+export function PermissionPromptOverlay() {
+  const { pendingRequests, respond, dismiss } = usePermission();
+
+  if (pendingRequests.length === 0) return null;
+
+  return (
+    <div className="fixed top-20 right-4 z-50 flex flex-col gap-3 max-w-sm">
+      <AnimatePresence>
+        {pendingRequests.map((req) => (
+          <motion.div
+            key={req.request_id}
+            initial={{ opacity: 0, x: 80, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 80, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="border border-theme-border bg-theme-surface-1/95 backdrop-blur-xl rounded-lg p-4 shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+          >
+            <div className="flex items-start gap-3 mb-3">
+              <div className="shrink-0 mt-0.5">
+                <ShieldAlert size={18} className="text-theme-accent" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-theme-accent font-mono text-[10px] uppercase tracking-[0.2em] font-bold">
+                  Permission Required
+                </h3>
+                <p className="text-primary-txt font-mono text-xs mt-1.5 font-semibold">
+                  {req.tool_name}
+                </p>
+                <p className="text-secondary-txt text-[11px] mt-1 leading-relaxed">
+                  {req.description}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button
+                onClick={() => respond(req.request_id, { kind: 'allow' })}
+                className="px-3 py-1.5 bg-green-600/80 hover:bg-green-500/80 text-white text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
+              >
+                Allow Once
+              </button>
+              <button
+                onClick={() => dismiss(req.request_id)}
+                className="px-3 py-1.5 bg-red-600/80 hover:bg-red-500/80 text-white text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
+              >
+                Deny
+              </button>
+              <button
+                onClick={() => respond(req.request_id, { kind: 'allow_always' })}
+                className="px-3 py-1.5 bg-green-900/60 hover:bg-green-800/60 text-white/90 text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
+              >
+                Always Allow
+              </button>
+              <button
+                onClick={() => respond(req.request_id, { kind: 'deny_always' })}
+                className="px-3 py-1.5 bg-red-900/60 hover:bg-red-800/60 text-white/90 text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
+              >
+                Always Deny
+              </button>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}

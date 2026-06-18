@@ -15,6 +15,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    session_messages (session_id, seq) {
+        session_id -> Text,
+        seq -> Integer,
+        role -> Text,
+        content_json -> Text,
+        created_at -> BigInt,
+    }
+}
+
+diesel::table! {
     sessions (id) {
         id -> Text,
         title -> Nullable<Text>,
@@ -24,5 +34,11 @@ diesel::table! {
 }
 
 diesel::joinable!(session_history -> sessions (session_id));
+diesel::joinable!(session_messages -> sessions (session_id));
 
-diesel::allow_tables_to_appear_in_same_query!(permission_preferences, session_history, sessions,);
+diesel::allow_tables_to_appear_in_same_query!(
+    permission_preferences,
+    session_history,
+    session_messages,
+    sessions,
+);

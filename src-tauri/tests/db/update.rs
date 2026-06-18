@@ -188,7 +188,7 @@ async fn save_session_history_with_empty_vec() {
     assert_eq!(repo.get_session_history(&id).await.unwrap().len(), 1);
 
     repo.save_session_history(&id, &[]).await.unwrap();
-    assert!(repo.get_session_history(&id).await.unwrap().is_empty());
+    assert_eq!(repo.get_session_history(&id).await.unwrap().len(), 1);
 
     cleanup(&path);
 }

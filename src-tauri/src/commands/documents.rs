@@ -1,7 +1,9 @@
 use crate::domain::config::AppConfig;
 use crate::domain::errors::AppError;
 use crate::handlers::documents;
-use tauri::State;
+use crate::infrastructure::permission_gate::AppPermissionGate;
+use std::sync::Arc;
+use tauri::{Manager, State};
 
 /// Reads a file inside the sandbox directory, enforcing the configured read extensions.
 ///
@@ -56,12 +58,16 @@ pub async fn write_document(
     content: String,
     append: Option<bool>,
     config: State<'_, tokio::sync::Mutex<AppConfig>>,
+    app: tauri::AppHandle,
 ) -> Result<String, AppError> {
     let (sandbox_dir, write_extensions) = {
         let guard = config.lock().await;
         (guard.sandbox_dir.clone(), guard.write_extensions.clone())
     };
-    documents::write_document(&sandbox_dir, write_extensions, path, content, append).await
+    let gate: Option<Arc<AppPermissionGate>> = app
+        .try_state::<Arc<AppPermissionGate>>()
+        .map(|s| s.inner().clone());
+    documents::write_document(&sandbox_dir, write_extensions, path, content, append, gate).await
 }
 
 /// Lists entries at a path inside the sandbox directory.

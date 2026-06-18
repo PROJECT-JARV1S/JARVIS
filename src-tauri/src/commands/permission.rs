@@ -34,6 +34,11 @@ pub async fn set_permission_preference(
     prefs_repo: State<'_, Arc<PermissionRepository>>,
     gate: State<'_, Arc<AppPermissionGate>>,
 ) -> Result<(), AppError> {
+    if decision != "allow" && decision != "deny" {
+        return Err(AppError::SystemError(
+            "decision must be 'allow' or 'deny'".into(),
+        ));
+    }
     prefs_repo.set_preference(&tool_name, &decision).await?;
     gate.reload_preferences().await?;
     Ok(())

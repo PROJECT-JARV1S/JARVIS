@@ -163,7 +163,7 @@ impl PermissionGate for AppPermissionGate {
             Ok(Ok(PermissionResponse::Deny { reason })) => PermissionResult::Deny { reason },
             Ok(Ok(PermissionResponse::AllowAlways)) => {
                 if let Err(e) = self.prefs_repo.set_preference(tool_name, "allow").await {
-                    eprintln!("Failed to persist allow-always preference: {}", e);
+                    tracing::warn!(error = %e, "failed to persist allow-always preference");
                 }
                 self.prefs
                     .lock()
@@ -173,7 +173,7 @@ impl PermissionGate for AppPermissionGate {
             }
             Ok(Ok(PermissionResponse::DenyAlways)) => {
                 if let Err(e) = self.prefs_repo.set_preference(tool_name, "deny").await {
-                    eprintln!("Failed to persist deny-always preference: {}", e);
+                    tracing::warn!(error = %e, "failed to persist deny-always preference");
                 }
                 self.prefs
                     .lock()
@@ -196,14 +196,23 @@ impl PermissionGate for AppPermissionGate {
     }
 }
 
-/// Extracts the last `[...]` segment from an agent_rs tool description.
-/// Returns `None` if no `[...]` segment is found.
-fn extract_path_from_description(description: &str) -> Option<String> {
-    let last_open = description.rfind('[')?;
-    let last_close = description.rfind(']')?;
-    if last_close > last_open {
-        Some(description[last_open + 1..last_close].to_string())
-    } else {
-        None
+/// Extracts a file path from a known agent_rs tool description prefix.
+/// Returns `None` if the description doesn't match any known prefix.
+pub fn extract_path_from_description(description: &str) -> Option<String> {
+    const KNOWN_PREFIXES: &[&str] = &[
+        "Wants to write file at ",
+        "Wants to read file at ",
+        "Wants to list directory ",
+        "Wants to search files in ",
+        "Wants to grep files in ",
+    ];
+    for prefix in KNOWN_PREFIXES {
+        if let Some(rest) = description.strip_prefix(prefix) {
+            let trimmed = rest.trim_start().trim_end_matches(['[', ']', ' ']);
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
     }
+    None
 }

@@ -6,7 +6,7 @@ use std::sync::Mutex;
 ///
 /// Each variant serialises with `{"type": "..."}` thanks to the serde tag.
 /// Tauri's `Channel<T>` requires `T: Clone + Serialize`.
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum StreamEvent {
     Text {

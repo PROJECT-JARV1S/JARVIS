@@ -1,22 +1,20 @@
 use crate::domain::errors::AppError;
+use crate::infrastructure::agent::try_get_shared_sandbox;
 use crate::infrastructure::permission_gate::AppPermissionGate;
 use agent_rs_lib::agent::permission::PermissionPolicy;
 use agent_rs_lib::agent::tools::{
     GlobSearchTool, GrepSearchTool, ListDirectoryTool, ReadDocumentTool, WriteDocumentTool,
 };
-use agent_rs_lib::security::{SandboxConfig, SharedSandbox};
 use rig_core::tool::ToolDyn;
 use std::collections::HashSet;
 use std::sync::Arc;
 
 pub async fn read_document(
-    sandbox_dir: &str,
     allowed_extensions: HashSet<String>,
     path: String,
 ) -> Result<String, AppError> {
-    let sandbox = Arc::new(SharedSandbox::from(
-        SandboxConfig::single(sandbox_dir).map_err(|e| AppError::SystemError(e.to_string()))?,
-    ));
+    let sandbox = try_get_shared_sandbox()
+        .ok_or_else(|| AppError::SystemError("sandbox not initialized".into()))?;
     let tool = ReadDocumentTool::new(sandbox, allowed_extensions, PermissionPolicy::AllowAll);
     let args = serde_json::json!({ "path": path }).to_string();
     tool.call(args)
@@ -25,16 +23,14 @@ pub async fn read_document(
 }
 
 pub async fn write_document(
-    sandbox_dir: &str,
     allowed_extensions: HashSet<String>,
     path: String,
     content: String,
     append: Option<bool>,
     gate: Option<Arc<AppPermissionGate>>,
 ) -> Result<String, AppError> {
-    let sandbox = Arc::new(SharedSandbox::from(
-        SandboxConfig::single(sandbox_dir).map_err(|e| AppError::SystemError(e.to_string()))?,
-    ));
+    let sandbox = try_get_shared_sandbox()
+        .ok_or_else(|| AppError::SystemError("sandbox not initialized".into()))?;
     let policy = gate
         .map(|g| {
             PermissionPolicy::Custom(
@@ -52,10 +48,9 @@ pub async fn write_document(
         .map_err(|e| AppError::SystemError(e.to_string()))
 }
 
-pub async fn list_directory(sandbox_dir: &str, path: Option<String>) -> Result<String, AppError> {
-    let sandbox = Arc::new(SharedSandbox::from(
-        SandboxConfig::single(sandbox_dir).map_err(|e| AppError::SystemError(e.to_string()))?,
-    ));
+pub async fn list_directory(path: Option<String>) -> Result<String, AppError> {
+    let sandbox = try_get_shared_sandbox()
+        .ok_or_else(|| AppError::SystemError("sandbox not initialized".into()))?;
     let tool = ListDirectoryTool::new(sandbox, PermissionPolicy::AllowAll);
     let args = match path {
         Some(p) => serde_json::json!({ "path": p }).to_string(),
@@ -66,10 +61,9 @@ pub async fn list_directory(sandbox_dir: &str, path: Option<String>) -> Result<S
         .map_err(|e| AppError::SystemError(e.to_string()))
 }
 
-pub async fn glob_search(sandbox_dir: &str, pattern: String) -> Result<String, AppError> {
-    let sandbox = Arc::new(SharedSandbox::from(
-        SandboxConfig::single(sandbox_dir).map_err(|e| AppError::SystemError(e.to_string()))?,
-    ));
+pub async fn glob_search(pattern: String) -> Result<String, AppError> {
+    let sandbox = try_get_shared_sandbox()
+        .ok_or_else(|| AppError::SystemError("sandbox not initialized".into()))?;
     let tool = GlobSearchTool::new(sandbox, PermissionPolicy::AllowAll);
     let args = serde_json::json!({ "pattern": pattern }).to_string();
     tool.call(args)
@@ -78,15 +72,13 @@ pub async fn glob_search(sandbox_dir: &str, pattern: String) -> Result<String, A
 }
 
 pub async fn grep_search(
-    sandbox_dir: &str,
     allowed_extensions: HashSet<String>,
     query: String,
     path: Option<String>,
     case_sensitive: Option<bool>,
 ) -> Result<String, AppError> {
-    let sandbox = Arc::new(SharedSandbox::from(
-        SandboxConfig::single(sandbox_dir).map_err(|e| AppError::SystemError(e.to_string()))?,
-    ));
+    let sandbox = try_get_shared_sandbox()
+        .ok_or_else(|| AppError::SystemError("sandbox not initialized".into()))?;
     let tool = GrepSearchTool::new(sandbox, allowed_extensions, PermissionPolicy::AllowAll);
     let mut args = serde_json::json!({ "query": query });
     if let Some(path) = path {

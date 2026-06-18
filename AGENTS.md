@@ -7,6 +7,7 @@
 - `bun run dev` — Vite frontend-only at `http://localhost:1420`.
 - `bun run build` → `tsc && vite build` (**type-check at build time** — TS errors fail the build).
 - `bun run tauri build` — production bundle (LTO, strip, codegen-units=1, opt-level=3, panic=unwind).
+- The `tauri` script is a thin Node wrapper (`scripts/tauri.cjs`) that merges `src-tauri/tauri.dev.conf.json` in dev; release builds use the hardened CSP in the base `src-tauri/tauri.conf.json` (no `unsafe-eval`).
 - Vite watcher **ignores** `src-tauri/**` (configured in `vite.config.ts`).
 - **Rust**: run all cargo commands from `src-tauri/`. Crate is named `jarvis_lib` (avoids Windows binary collision with bin name `jarvis`).
   ```bash
@@ -44,6 +45,7 @@ Clean Architecture / DDD layout:
 - AI deps: `agent_rs` (git dep), `rig-core 0.36`.
 - Voice: `jarvis-transcriber` (git dep, Parakeet model).
 - Startup wiring in `lib.rs`: loads `config.toml` from app config dir, initializes SQLite, voice state, and system telemetry background worker.
+- **Module Files (`mod.rs`)**: `mod.rs` files in the backend must only contain module declarations (`mod` / `pub mod`) and re-exports (`pub use` / `use`). They must not contain struct definitions, implementation blocks (`impl`), functions, constants, or variables. Move any such code to dedicated sub-modules.
 
 ## No CI/CD, no ESLint/Prettier
 

@@ -19,10 +19,10 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' http://localhost:1420; img-src 'self' data: asset: http://asset.localhost; media-src 'self' asset: http://asset.localhost http://localhost:1420; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline';",
+      "csp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost; media-src 'self' asset: http://asset.localhost; script-src 'self'; style-src 'self' 'unsafe-inline';",
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": ["$APPDATA/jarvis/assets/**", "$RESOURCE/**"]
       }
     }
   },

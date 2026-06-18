@@ -1,6 +1,7 @@
 use crate::domain::chat::StreamEvent;
 use crate::domain::config::{AppConfig, Providers};
 use crate::domain::errors::AppError;
+use crate::infrastructure::permission_gate::AppPermissionGate;
 use agent_rs_lib::agent::agents::ContextManagedChatStream;
 use agent_rs_lib::agent::permission::PermissionPolicy;
 use agent_rs_lib::agent::tools::{
@@ -9,14 +10,14 @@ use agent_rs_lib::agent::tools::{
 use agent_rs_lib::agent::{AgentContextExt, ContextManagedAgent};
 use agent_rs_lib::config::McpConfig;
 use agent_rs_lib::mcp::client::McpClient;
-use agent_rs_lib::security::SandboxConfig;
+use agent_rs_lib::security::{SandboxConfig, SharedSandbox};
 use rig_core::agent::Agent;
 use rig_core::prelude::*;
 use rig_core::providers::{anthropic, gemini, openai};
 use rig_core::streaming::{StreamedAssistantContent, ToolCallDeltaContent};
 use rig_core::tool::ToolDyn;
 use std::path::Path;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock, OnceLock};
 use tauri::{Emitter, Manager};
 use tokio::sync::RwLock;
 
@@ -287,7 +288,6 @@ struct ConfigSignature {
     compaction_prompt: String,
     compaction_threshold: usize,
     mcp_config_path: String,
-    sandbox_dir: String,
     read_extensions: String,
     write_extensions: String,
 }
@@ -309,7 +309,6 @@ impl ConfigSignature {
             compaction_prompt: config.compaction_prompt.clone(),
             compaction_threshold: config.compaction_threshold,
             mcp_config_path: config.mcp_config_path.clone(),
-            sandbox_dir: config.sandbox_dir.clone(),
             read_extensions: read_exts.join(","),
             write_extensions: write_exts.join(","),
         }
@@ -325,7 +324,6 @@ impl ConfigSignature {
             compaction_prompt: String::new(),
             compaction_threshold: 0,
             mcp_config_path: String::new(),
-            sandbox_dir: String::new(),
             read_extensions: String::new(),
             write_extensions: String::new(),
         }
@@ -346,6 +344,44 @@ pub static AGENT_MANAGER: LazyLock<AgentManager> = LazyLock::new(|| AgentManager
     agent: RwLock::new(None),
     signature: RwLock::new(ConfigSignature::empty()),
 });
+
+/// Global shared sandbox that persists across agent rebuilds and supports hot-swapping.
+static SHARED_SANDBOX: OnceLock<Arc<SharedSandbox>> = OnceLock::new();
+
+/// Returns the global `Arc<SharedSandbox>`, if initialized.
+///
+/// Returns `None` if no agent has been built yet (i.e. the lazy initializer hasn't fired).
+pub fn try_get_shared_sandbox() -> Option<Arc<SharedSandbox>> {
+    SHARED_SANDBOX.get().cloned()
+}
+
+/// Returns the global `Arc<SharedSandbox>`, initializing it on first call.
+///
+/// # Panics
+///
+/// Panics if the initial `sandbox_dir` cannot be canonicalized.
+#[allow(clippy::expect_used)]
+fn get_or_init_shared_sandbox(config: &AppConfig) -> Arc<SharedSandbox> {
+    SHARED_SANDBOX
+        .get_or_init(|| {
+            let sc =
+                SandboxConfig::single(&config.sandbox_dir).expect("Initial sandbox_dir is invalid");
+            Arc::new(SharedSandbox::from(sc))
+        })
+        .clone()
+}
+
+/// Hot-swaps the sandbox root if `sandbox_dir` has changed, without rebuilding the agent.
+fn hot_swap_sandbox(config: &AppConfig) -> Result<(), AppError> {
+    if let Some(shared) = SHARED_SANDBOX.get() {
+        let new_config = SandboxConfig::single(&config.sandbox_dir)
+            .map_err(|e| AppError::SystemError(e.to_string()))?;
+        shared
+            .set(new_config)
+            .map_err(|e| AppError::SystemError(e.to_string()))?;
+    }
+    Ok(())
+}
 
 impl AgentManager {
     /// Sends a prompt to the cached agent, rebuilding it first if config has changed.
@@ -378,6 +414,7 @@ impl AgentManager {
         config: &AppConfig,
         app: Option<&tauri::AppHandle>,
     ) -> Result<String, AppError> {
+        hot_swap_sandbox(config)?;
         if let Some(handle) = app {
             self.build_and_store(config, handle).await?;
         }
@@ -425,6 +462,10 @@ impl AgentManager {
     ) -> Result<(), AppError> {
         let signature = ConfigSignature::from_config(config);
 
+        let gate: Option<Arc<AppPermissionGate>> = app
+            .try_state::<Arc<AppPermissionGate>>()
+            .map(|s| s.inner().clone());
+
         let needs_rebuild = {
             let sig_guard = self.signature.read().await;
             let agent_guard = self.agent.read().await;
@@ -432,7 +473,7 @@ impl AgentManager {
         };
 
         if needs_rebuild {
-            let new_agent = build_agent(config, Some(app)).await?;
+            let new_agent = build_agent(config, Some(app), gate).await?;
 
             let mut sig_guard = self.signature.write().await;
             let mut agent_guard = self.agent.write().await;
@@ -454,6 +495,7 @@ impl AgentManager {
         app: Option<&tauri::AppHandle>,
         channel: &tauri::ipc::Channel<StreamEvent>,
     ) -> Result<Vec<rig_core::message::Message>, AppError> {
+        hot_swap_sandbox(config)?;
         if let Some(handle) = app {
             self.build_and_store(config, handle).await?;
         }
@@ -470,33 +512,40 @@ impl AgentManager {
 async fn build_agent(
     config: &AppConfig,
     app: Option<&tauri::AppHandle>,
+    gate: Option<Arc<AppPermissionGate>>,
 ) -> Result<AppAgent, AppError> {
     use tauri::Emitter;
 
     // Setup document tools with sandbox and extension config
-    let policy = PermissionPolicy::AllowAll;
-    let sandbox = SandboxConfig::single(&config.sandbox_dir)
-        .map_err(|e| AppError::SystemError(e.to_string()))?;
+    let ask_user: PermissionPolicy = if let Some(g) = gate {
+        PermissionPolicy::Custom(g)
+    } else {
+        PermissionPolicy::AllowAll
+    };
+    let sandbox = get_or_init_shared_sandbox(config);
     let read_exts = config.read_extensions.clone();
     let write_exts = config.write_extensions.clone();
 
     let mut tools: Vec<Box<dyn ToolDyn>> = vec![
         Box::new(ReadDocumentTool::new(
-            sandbox.clone(),
+            Arc::clone(&sandbox),
             read_exts.clone(),
-            policy.clone(),
+            ask_user.clone(),
         )),
         Box::new(WriteDocumentTool::new(
-            sandbox.clone(),
+            Arc::clone(&sandbox),
             write_exts,
-            policy.clone(),
+            ask_user.clone(),
         )),
-        Box::new(ListDirectoryTool::new(sandbox.clone(), policy.clone())),
-        Box::new(GlobSearchTool::new(sandbox.clone(), policy.clone())),
+        Box::new(ListDirectoryTool::new(
+            Arc::clone(&sandbox),
+            ask_user.clone(),
+        )),
+        Box::new(GlobSearchTool::new(Arc::clone(&sandbox), ask_user.clone())),
         Box::new(GrepSearchTool::new(
-            sandbox,
+            Arc::clone(&sandbox),
             config.read_extensions.clone(),
-            policy,
+            ask_user.clone(),
         )),
     ];
 
@@ -508,7 +557,7 @@ async fn build_agent(
                 let single_config = McpConfig {
                     mcp_servers: single_servers,
                 };
-                match McpClient::new(single_config).tools().await {
+                match McpClient::new(single_config).tools(ask_user.clone()).await {
                     Ok(mcp_tools) => {
                         tools.extend(mcp_tools);
                     }

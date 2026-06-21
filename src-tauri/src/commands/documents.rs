@@ -24,12 +24,16 @@ use tauri::{Manager, State};
 pub async fn read_document(
     path: String,
     config: State<'_, tokio::sync::RwLock<AppConfig>>,
+    app: tauri::AppHandle,
 ) -> Result<String, AppError> {
     let read_extensions = {
         let guard = config.read().await;
         guard.read_extensions.clone()
     };
-    documents::read_document(read_extensions, path).await
+    let gate: Option<Arc<AppPermissionGate>> = app
+        .try_state::<Arc<AppPermissionGate>>()
+        .map(|s| s.inner().clone());
+    documents::read_document(read_extensions, path, gate).await
 }
 
 /// Writes content to a file inside the sandbox, enforcing write extensions.
@@ -86,8 +90,14 @@ pub async fn write_document(
 ///
 /// Returns [`AppError::SystemError`] if the directory cannot be read.
 #[tauri::command]
-pub async fn list_directory(path: Option<String>) -> Result<String, AppError> {
-    documents::list_directory(path).await
+pub async fn list_directory(
+    path: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<String, AppError> {
+    let gate: Option<Arc<AppPermissionGate>> = app
+        .try_state::<Arc<AppPermissionGate>>()
+        .map(|s| s.inner().clone());
+    documents::list_directory(path, gate).await
 }
 
 /// Glob-searches for files matching `pattern` inside the sandbox.
@@ -105,8 +115,11 @@ pub async fn list_directory(path: Option<String>) -> Result<String, AppError> {
 ///
 /// Returns [`AppError::SystemError`] if the glob pattern is invalid or the search fails.
 #[tauri::command]
-pub async fn glob_search(pattern: String) -> Result<String, AppError> {
-    documents::glob_search(pattern).await
+pub async fn glob_search(pattern: String, app: tauri::AppHandle) -> Result<String, AppError> {
+    let gate: Option<Arc<AppPermissionGate>> = app
+        .try_state::<Arc<AppPermissionGate>>()
+        .map(|s| s.inner().clone());
+    documents::glob_search(pattern, gate).await
 }
 
 /// Grep-searches file contents inside the sandbox for a given query.
@@ -135,10 +148,14 @@ pub async fn grep_search(
     path: Option<String>,
     case_sensitive: Option<bool>,
     config: State<'_, tokio::sync::RwLock<AppConfig>>,
+    app: tauri::AppHandle,
 ) -> Result<String, AppError> {
     let read_extensions = {
         let guard = config.read().await;
         guard.read_extensions.clone()
     };
-    documents::grep_search(read_extensions, query, path, case_sensitive).await
+    let gate: Option<Arc<AppPermissionGate>> = app
+        .try_state::<Arc<AppPermissionGate>>()
+        .map(|s| s.inner().clone());
+    documents::grep_search(read_extensions, query, path, case_sensitive, gate).await
 }

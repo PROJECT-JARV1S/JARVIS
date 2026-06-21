@@ -111,13 +111,13 @@ async fn extract_path_empty_after_prefix_returns_none() {
 async fn allow_always_persists_to_db() {
     let (repo, path) = setup_repo("allow_always").await;
     let result = tokio::time::timeout(Duration::from_millis(500), async {
-        repo.set_preference("my_tool", "allow").await
+        repo.set_preference("my_tool", None, "allow").await
     })
     .await
     .expect("timeout");
     assert!(result.is_ok());
 
-    let pref = repo.get_preference("my_tool").await.unwrap();
+    let pref = repo.get_preference("my_tool", None).await.unwrap();
     assert_eq!(pref.as_deref(), Some("allow"));
     cleanup(&path);
 }
@@ -126,13 +126,13 @@ async fn allow_always_persists_to_db() {
 async fn deny_always_persists_to_db() {
     let (repo, path) = setup_repo("deny_always").await;
     let result = tokio::time::timeout(Duration::from_millis(500), async {
-        repo.set_preference("my_tool", "deny").await
+        repo.set_preference("my_tool", None, "deny").await
     })
     .await
     .expect("timeout");
     assert!(result.is_ok());
 
-    let pref = repo.get_preference("my_tool").await.unwrap();
+    let pref = repo.get_preference("my_tool", None).await.unwrap();
     assert_eq!(pref.as_deref(), Some("deny"));
     cleanup(&path);
 }
@@ -141,8 +141,8 @@ async fn deny_always_persists_to_db() {
 async fn list_preferences_returns_all() {
     let (repo, path) = setup_repo("list_prefs").await;
     tokio::time::timeout(Duration::from_millis(500), async {
-        repo.set_preference("tool_a", "allow").await.unwrap();
-        repo.set_preference("tool_b", "deny").await.unwrap();
+        repo.set_preference("tool_a", None, "allow").await.unwrap();
+        repo.set_preference("tool_b", None, "deny").await.unwrap();
     })
     .await
     .expect("timeout");
@@ -156,13 +156,13 @@ async fn list_preferences_returns_all() {
 async fn overwrite_existing_preference() {
     let (repo, path) = setup_repo("overwrite").await;
     tokio::time::timeout(Duration::from_millis(500), async {
-        repo.set_preference("tool_x", "allow").await.unwrap();
-        repo.set_preference("tool_x", "deny").await.unwrap();
+        repo.set_preference("tool_x", None, "allow").await.unwrap();
+        repo.set_preference("tool_x", None, "deny").await.unwrap();
     })
     .await
     .expect("timeout");
 
-    let pref = repo.get_preference("tool_x").await.unwrap();
+    let pref = repo.get_preference("tool_x", None).await.unwrap();
     assert_eq!(pref.as_deref(), Some("deny"));
     cleanup(&path);
 }
@@ -171,13 +171,13 @@ async fn overwrite_existing_preference() {
 async fn delete_preference() {
     let (repo, path) = setup_repo("delete").await;
     tokio::time::timeout(Duration::from_millis(500), async {
-        repo.set_preference("tool_y", "allow").await.unwrap();
-        repo.delete_preference("tool_y").await.unwrap();
+        repo.set_preference("tool_y", None, "allow").await.unwrap();
+        repo.delete_preference("tool_y", None).await.unwrap();
     })
     .await
     .expect("timeout");
 
-    let pref = repo.get_preference("tool_y").await.unwrap();
+    let pref = repo.get_preference("tool_y", None).await.unwrap();
     assert!(pref.is_none());
     cleanup(&path);
 }
@@ -188,15 +188,24 @@ async fn delete_preference() {
 async fn allow_always_refreshes_cache_via_reload() {
     let (repo, path) = setup_repo("cache_refresh_allow").await;
     tokio::time::timeout(Duration::from_millis(500), async {
-        repo.set_preference("tool_z", "allow").await.unwrap();
+        repo.set_preference("tool_z", None, "allow").await.unwrap();
 
-        let mut cache: HashMap<String, String> = HashMap::new();
+        let mut cache: HashMap<String, Vec<(Option<String>, String)>> = HashMap::new();
         assert!(!cache.contains_key("tool_z"));
 
         for pref in repo.list_preferences().await.unwrap() {
-            cache.insert(pref.tool_name, pref.decision);
+            cache
+                .entry(pref.tool_name)
+                .or_default()
+                .push((pref.path_pattern, pref.decision));
         }
-        assert_eq!(cache.get("tool_z").map(String::as_str), Some("allow"));
+        assert_eq!(
+            cache
+                .get("tool_z")
+                .and_then(|v| v.first())
+                .map(|(_, d)| d.as_str()),
+            Some("allow")
+        );
     })
     .await
     .expect("timeout");
@@ -207,13 +216,22 @@ async fn allow_always_refreshes_cache_via_reload() {
 async fn deny_always_refreshes_cache_via_reload() {
     let (repo, path) = setup_repo("cache_refresh_deny").await;
     tokio::time::timeout(Duration::from_millis(500), async {
-        repo.set_preference("tool_w", "deny").await.unwrap();
+        repo.set_preference("tool_w", None, "deny").await.unwrap();
 
-        let mut cache: HashMap<String, String> = HashMap::new();
+        let mut cache: HashMap<String, Vec<(Option<String>, String)>> = HashMap::new();
         for pref in repo.list_preferences().await.unwrap() {
-            cache.insert(pref.tool_name, pref.decision);
+            cache
+                .entry(pref.tool_name)
+                .or_default()
+                .push((pref.path_pattern, pref.decision));
         }
-        assert_eq!(cache.get("tool_w").map(String::as_str), Some("deny"));
+        assert_eq!(
+            cache
+                .get("tool_w")
+                .and_then(|v| v.first())
+                .map(|(_, d)| d.as_str()),
+            Some("deny")
+        );
     })
     .await
     .expect("timeout");

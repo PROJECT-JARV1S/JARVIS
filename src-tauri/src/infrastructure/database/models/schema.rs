@@ -1,8 +1,9 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    permission_preferences (tool_name) {
+    permission_preferences (tool_name, path_pattern) {
         tool_name -> Text,
+        path_pattern -> Nullable<Text>,
         decision -> Text,
     }
 }

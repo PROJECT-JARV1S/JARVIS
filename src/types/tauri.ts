@@ -74,10 +74,11 @@ export interface PermissionRequest {
 export type PermissionResponse =
   | { kind: 'allow' }
   | { kind: 'deny'; reason: string }
-  | { kind: 'allow_always' }
-  | { kind: 'deny_always' };
+  | { kind: 'allow_always'; path?: string | null }
+  | { kind: 'deny_always'; path?: string | null };
 
 export interface PermissionPreference {
   tool_name: string;
   decision: 'allow' | 'deny';
+  path_pattern?: string | null;
 }

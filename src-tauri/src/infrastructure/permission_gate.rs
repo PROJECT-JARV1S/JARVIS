@@ -14,8 +14,13 @@ use tokio::sync::{oneshot, Mutex};
 const DEFAULT_TIMEOUT_SECS: u64 = 60;
 
 /// In-memory cache of persisted permission preferences.
-/// Key: tool_name (e.g. "write_document"). Value: "allow" or "deny".
-type PrefCache = HashMap<String, String>;
+/// Key: tool_name (e.g. "write_document"). Value: all persisted entries for that tool.
+#[derive(Clone)]
+struct PrefEntry {
+    path_pattern: Option<String>,
+    decision: String,
+}
+type PrefCache = HashMap<String, Vec<PrefEntry>>;
 
 /// Pending permission requests awaiting a frontend response.
 /// Key: request_id (UUID). Value: oneshot sender.
@@ -55,9 +60,12 @@ impl AppPermissionGate {
     /// Loads all persisted preferences into the in-memory cache.
     /// Call this at startup to seed the fast-path cache.
     pub async fn preload_preferences(&self) -> Result<(), AppError> {
-        let mut cache = PrefCache::new();
+        let mut cache: PrefCache = HashMap::new();
         for pref in self.prefs_repo.list_preferences().await? {
-            cache.insert(pref.tool_name, pref.decision);
+            cache.entry(pref.tool_name).or_default().push(PrefEntry {
+                path_pattern: pref.path_pattern,
+                decision: pref.decision,
+            });
         }
         *self.prefs.lock().await = cache;
         Ok(())
@@ -93,9 +101,12 @@ impl AppPermissionGate {
 
     /// Refreshes the in-memory prefs cache from the DB.
     pub async fn reload_preferences(&self) -> Result<(), AppError> {
-        let mut cache = PrefCache::new();
+        let mut cache: PrefCache = HashMap::new();
         for pref in self.prefs_repo.list_preferences().await? {
-            cache.insert(pref.tool_name, pref.decision);
+            cache.entry(pref.tool_name).or_default().push(PrefEntry {
+                path_pattern: pref.path_pattern,
+                decision: pref.decision,
+            });
         }
         *self.prefs.lock().await = cache;
         Ok(())
@@ -123,6 +134,31 @@ impl PermissionGate for AppPermissionGate {
             }
         }
         // Path is outside the sandbox (or unparseable) — fall through to slow path.
+
+        // Fast path: consult persisted user preference (in-memory cache).
+        // This honors previously-saved "Allow Always" / "Deny Always" decisions
+        // so the user is not re-prompted for tools they already decided on.
+        let matched: Option<String> = {
+            let prefs = self.prefs.lock().await;
+            match prefs.get(tool_name) {
+                Some(entries) if !entries.is_empty() => {
+                    let extracted_path = extract_path_from_description(description);
+                    pick_best_match(entries, extracted_path.as_deref()).map(|e| e.decision.clone())
+                }
+                _ => None,
+            }
+        };
+        if let Some(decision) = matched {
+            match decision.as_str() {
+                "allow" => return PermissionResult::Allow,
+                "deny" => {
+                    return PermissionResult::Deny {
+                        reason: format!("Tool '{}' is denied by user preference", tool_name),
+                    }
+                }
+                _ => {}
+            }
+        }
 
         // Slow path: emit event, await response
         let request_id = uuid::Uuid::new_v4().to_string();
@@ -161,24 +197,44 @@ impl PermissionGate for AppPermissionGate {
         match response {
             Ok(Ok(PermissionResponse::Allow)) => PermissionResult::Allow,
             Ok(Ok(PermissionResponse::Deny { reason })) => PermissionResult::Deny { reason },
-            Ok(Ok(PermissionResponse::AllowAlways)) => {
-                if let Err(e) = self.prefs_repo.set_preference(tool_name, "allow").await {
+            Ok(Ok(PermissionResponse::AllowAlways { path })) => {
+                if let Err(e) = self
+                    .prefs_repo
+                    .set_preference(tool_name, path.as_deref(), "allow")
+                    .await
+                {
                     tracing::warn!(error = %e, "failed to persist allow-always preference");
                 }
-                self.prefs
-                    .lock()
-                    .await
-                    .insert(tool_name.to_string(), "allow".to_string());
+                let mut prefs = self.prefs.lock().await;
+                let entries = prefs.entry(tool_name.to_string()).or_default();
+                if let Some(existing) = entries.iter_mut().find(|e| e.path_pattern == path) {
+                    existing.decision = "allow".to_string();
+                } else {
+                    entries.push(PrefEntry {
+                        path_pattern: path,
+                        decision: "allow".to_string(),
+                    });
+                }
                 PermissionResult::Allow
             }
-            Ok(Ok(PermissionResponse::DenyAlways)) => {
-                if let Err(e) = self.prefs_repo.set_preference(tool_name, "deny").await {
+            Ok(Ok(PermissionResponse::DenyAlways { path })) => {
+                if let Err(e) = self
+                    .prefs_repo
+                    .set_preference(tool_name, path.as_deref(), "deny")
+                    .await
+                {
                     tracing::warn!(error = %e, "failed to persist deny-always preference");
                 }
-                self.prefs
-                    .lock()
-                    .await
-                    .insert(tool_name.to_string(), "deny".to_string());
+                let mut prefs = self.prefs.lock().await;
+                let entries = prefs.entry(tool_name.to_string()).or_default();
+                if let Some(existing) = entries.iter_mut().find(|e| e.path_pattern == path) {
+                    existing.decision = "deny".to_string();
+                } else {
+                    entries.push(PrefEntry {
+                        path_pattern: path,
+                        decision: "deny".to_string(),
+                    });
+                }
                 PermissionResult::Deny {
                     reason: format!("Tool '{}' is permanently denied by user", tool_name),
                 }
@@ -215,4 +271,43 @@ pub fn extract_path_from_description(description: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Normalizes a path for prefix comparison: ensures it ends with `/`.
+fn normalize_for_prefix(p: &str) -> String {
+    if p.ends_with('/') {
+        p.to_string()
+    } else {
+        format!("{}/", p)
+    }
+}
+
+/// Picks the best matching entry from a list of preferences for the given extracted path.
+///
+/// Priority: longest matching path-specific rule > global rule > no match.
+fn pick_best_match<'a>(
+    entries: &'a [PrefEntry],
+    extracted_path: Option<&str>,
+) -> Option<&'a PrefEntry> {
+    if let Some(path) = extracted_path {
+        let normalized = normalize_for_prefix(path);
+        let mut best: Option<&'a PrefEntry> = None;
+        for entry in entries {
+            if let Some(ref pattern) = entry.path_pattern {
+                let normalized_pattern = normalize_for_prefix(pattern);
+                if normalized.starts_with(&normalized_pattern) {
+                    match best {
+                        Some(b)
+                            if b.path_pattern.as_ref().map(|p| p.len()).unwrap_or(0)
+                                >= pattern.len() => {}
+                        _ => best = Some(entry),
+                    }
+                }
+            }
+        }
+        if best.is_some() {
+            return best;
+        }
+    }
+    entries.iter().find(|e| e.path_pattern.is_none())
 }

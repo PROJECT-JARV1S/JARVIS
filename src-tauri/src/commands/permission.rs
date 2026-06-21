@@ -31,6 +31,7 @@ pub async fn get_permission_preferences(
 pub async fn set_permission_preference(
     tool_name: String,
     decision: String,
+    path_pattern: Option<String>,
     prefs_repo: State<'_, Arc<PermissionRepository>>,
     gate: State<'_, Arc<AppPermissionGate>>,
 ) -> Result<(), AppError> {
@@ -39,7 +40,9 @@ pub async fn set_permission_preference(
             "decision must be 'allow' or 'deny'".into(),
         ));
     }
-    prefs_repo.set_preference(&tool_name, &decision).await?;
+    prefs_repo
+        .set_preference(&tool_name, path_pattern.as_deref(), &decision)
+        .await?;
     gate.reload_preferences().await?;
     Ok(())
 }
@@ -48,10 +51,13 @@ pub async fn set_permission_preference(
 #[tauri::command]
 pub async fn delete_permission_preference(
     tool_name: String,
+    path_pattern: Option<String>,
     prefs_repo: State<'_, Arc<PermissionRepository>>,
     gate: State<'_, Arc<AppPermissionGate>>,
 ) -> Result<(), AppError> {
-    prefs_repo.delete_preference(&tool_name).await?;
+    prefs_repo
+        .delete_preference(&tool_name, path_pattern.as_deref())
+        .await?;
     gate.reload_preferences().await?;
     Ok(())
 }

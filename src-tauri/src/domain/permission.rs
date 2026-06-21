@@ -24,10 +24,11 @@ pub enum PermissionResponse {
     /// Deny this single invocation. `reason` is propagated back to the LLM
     /// as a tool error so it can adjust its plan.
     Deny { reason: String },
-    /// Allow this tool for all future invocations (persisted in DB).
-    AllowAlways,
-    /// Deny this tool for all future invocations (persisted in DB).
-    DenyAlways,
+    /// Allow this tool for future invocations. If `path` is `Some`, scope the rule
+    /// to that directory (prefix match); if `None`, apply globally.
+    AllowAlways { path: Option<String> },
+    /// Deny this tool for future invocations. Same scoping rules as `AllowAlways`.
+    DenyAlways { path: Option<String> },
 }
 
 /// Persisted permission preference for a single tool.
@@ -35,6 +36,9 @@ pub enum PermissionResponse {
 pub struct PermissionPreference {
     /// Name of the tool (e.g. `"write_document"`).
     pub tool_name: String,
+    /// Directory prefix this rule applies to, or `None` for a global rule.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path_pattern: Option<String>,
     /// Persisted decision: `"allow"` or `"deny"`.
     pub decision: String,
 }

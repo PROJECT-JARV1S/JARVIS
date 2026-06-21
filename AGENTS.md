@@ -16,7 +16,18 @@
   cargo clippy --all-targets --all-features -- -D warnings
   cargo fmt --all
   ```
-- Prefix cargo/git commands with `rtk` (e.g. `rtk cargo check`) to filter output and save tokens.
+- **Diesel CLI** (`diesel` v2.3) is the canonical tool for SQLite schema and migrations. NEVER hand-edit `src-tauri/src/infrastructure/database/models/schema.rs` or write migration SQL blindly — use the CLI:
+  - Regenerate schema after migration changes:
+    ```bash
+    mkdir -p /tmp/jarvis_schema_probe
+    for m in src-tauri/src/infrastructure/database/migrations/*/up.sql; do sqlite3 /tmp/jarvis_schema_probe/db.sqlite < "$m"; done
+    DATABASE_URL="/tmp/jarvis_schema_probe/db.sqlite" diesel print-schema > src-tauri/src/infrastructure/database/models/schema.rs
+    ```
+  - Apply a migration to a real/temp DB for SQL validation (SQLite does NOT support `DROP CONSTRAINT`; the rename→create→copy→drop→rename pattern is required for schema changes):
+    ```bash
+    DATABASE_URL="/tmp/jarvis_probe.db" diesel migration run --migration-dir src-tauri/src/infrastructure/database/migrations
+    ```
+  - `diesel.toml` pins `print_schema.file` to `src/infrastructure/database/models/schema.rs` and the migrations dir to `./src/infrastructure/database/migrations`. Run all `diesel` commands from `src-tauri/`.
 
 ## Frontend Architecture (`src/`)
 

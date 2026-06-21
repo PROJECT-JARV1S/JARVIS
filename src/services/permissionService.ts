@@ -15,13 +15,17 @@ export async function getPermissionPreferences(): Promise<PermissionPreference[]
 
 export async function setPermissionPreference(
   toolName: string,
-  decision: 'allow' | 'deny'
+  decision: 'allow' | 'deny',
+  pathPattern?: string | null
 ): Promise<void> {
-  return invoke('set_permission_preference', { toolName, decision });
+  return invoke('set_permission_preference', { toolName, decision, pathPattern: pathPattern ?? null });
 }
 
-export async function deletePermissionPreference(toolName: string): Promise<void> {
-  return invoke('delete_permission_preference', { toolName });
+export async function deletePermissionPreference(
+  toolName: string,
+  pathPattern?: string | null
+): Promise<void> {
+  return invoke('delete_permission_preference', { toolName, pathPattern: pathPattern ?? null });
 }
 
 export async function onPermissionRequired(

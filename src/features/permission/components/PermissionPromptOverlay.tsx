@@ -2,6 +2,31 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert } from 'lucide-react';
 import { usePermission } from '../PermissionContext';
 
+const KNOWN_PREFIXES = [
+  'Wants to write file at ',
+  'Wants to read file at ',
+  'Wants to list directory ',
+  'Wants to search files in ',
+  'Wants to grep files in ',
+];
+
+const DIR_PREFIXES = new Set([
+  'Wants to list directory ',
+  'Wants to search files in ',
+  'Wants to grep files in ',
+]);
+
+function extractPathFromDescription(description: string): { path: string; isDirectoryContext: boolean } | null {
+  for (const prefix of KNOWN_PREFIXES) {
+    if (description.startsWith(prefix)) {
+      let rest = description.slice(prefix.length).trimStart();
+      rest = rest.replace(/^\[/, '').replace(/\]$/, '').trim();
+      if (rest.length > 0) return { path: rest, isDirectoryContext: DIR_PREFIXES.has(prefix) };
+    }
+  }
+  return null;
+}
+
 export function PermissionPromptOverlay() {
   const { pendingRequests, respond, dismiss } = usePermission();
 
@@ -36,32 +61,51 @@ export function PermissionPromptOverlay() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              <button
-                onClick={() => respond(req.request_id, { kind: 'allow' })}
-                className="px-3 py-1.5 bg-green-600/80 hover:bg-green-500/80 text-white text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
-              >
-                Allow Once
-              </button>
-              <button
-                onClick={() => dismiss(req.request_id)}
-                className="px-3 py-1.5 bg-red-600/80 hover:bg-red-500/80 text-white text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
-              >
-                Deny
-              </button>
-              <button
-                onClick={() => respond(req.request_id, { kind: 'allow_always' })}
-                className="px-3 py-1.5 bg-green-900/60 hover:bg-green-800/60 text-white/90 text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
-              >
-                Always Allow
-              </button>
-              <button
-                onClick={() => respond(req.request_id, { kind: 'deny_always' })}
-                className="px-3 py-1.5 bg-red-900/60 hover:bg-red-800/60 text-white/90 text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
-              >
-                Always Deny
-              </button>
-            </div>
+            {(() => {
+              const extracted = extractPathFromDescription(req.description);
+              const dir = extracted
+                ? extracted.isDirectoryContext
+                  ? extracted.path
+                  : extracted.path.slice(0, extracted.path.lastIndexOf('/')) || '/'
+                : null;
+              return (
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  <button
+                    onClick={() => respond(req.request_id, { kind: 'allow' })}
+                    className="px-3 py-1.5 bg-green-600/80 hover:bg-green-500/80 text-white text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
+                  >
+                    Allow Once
+                  </button>
+                  <button
+                    onClick={() => dismiss(req.request_id)}
+                    className="px-3 py-1.5 bg-red-600/80 hover:bg-red-500/80 text-white text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
+                  >
+                    Deny
+                  </button>
+                  {dir ? (
+                    <button
+                      onClick={() => respond(req.request_id, { kind: 'allow_always', path: dir })}
+                      className="col-span-2 px-3 py-1.5 bg-green-700/70 hover:bg-green-600/70 text-white text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer truncate"
+                      title={dir}
+                    >
+                      Always allow in this directory
+                    </button>
+                  ) : null}
+                  <button
+                    onClick={() => respond(req.request_id, { kind: 'allow_always' })}
+                    className="px-3 py-1.5 bg-green-900/60 hover:bg-green-800/60 text-white/90 text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
+                  >
+                    Always Allow
+                  </button>
+                  <button
+                    onClick={() => respond(req.request_id, { kind: 'deny_always' })}
+                    className="px-3 py-1.5 bg-red-900/60 hover:bg-red-800/60 text-white/90 text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
+                  >
+                    Always Deny
+                  </button>
+                </div>
+              );
+            })()}
           </motion.div>
         ))}
       </AnimatePresence>

@@ -1,7 +1,7 @@
 mod builder;
 mod dispatch;
 mod manager;
-mod sandbox;
+pub mod sandbox;
 mod signature;
 mod stream_consumer;
 

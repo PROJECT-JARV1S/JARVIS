@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 
 use super::builder::build_agent;
 use super::dispatch::AppAgent;
-use super::sandbox::hot_swap_sandbox;
+use super::sandbox::sync_sandbox_roots;
 use super::signature::ConfigSignature;
 
 /// Thread-safe singleton that lazily builds and caches the LLM agent.
@@ -58,7 +58,7 @@ impl AgentManager {
         config: &AppConfig,
         app: Option<&tauri::AppHandle>,
     ) -> Result<String, AppError> {
-        hot_swap_sandbox(config)?;
+        sync_sandbox_roots(config)?;
         if let Some(handle) = app {
             self.build_and_store(config, handle).await?;
         }
@@ -93,6 +93,9 @@ impl AgentManager {
         let gate: Option<Arc<AppPermissionGate>> = app
             .try_state::<Arc<AppPermissionGate>>()
             .map(|s| s.inner().clone());
+        if gate.is_none() {
+            tracing::warn!("AppPermissionGate not found in managed state during agent build — permission prompts will not be shown");
+        }
 
         let needs_rebuild = {
             let sig_guard = self.signature.read().await;
@@ -155,7 +158,7 @@ impl AgentManager {
         app: Option<&tauri::AppHandle>,
         channel: &tauri::ipc::Channel<StreamEvent>,
     ) -> Result<Vec<rig_core::message::Message>, AppError> {
-        hot_swap_sandbox(config)?;
+        sync_sandbox_roots(config)?;
         if let Some(handle) = app {
             self.build_and_store(config, handle).await?;
         }

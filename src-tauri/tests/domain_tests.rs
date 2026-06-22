@@ -116,7 +116,10 @@ fn test_config_missing_fields_defaults() {
         loaded.compaction_prompt,
         "Summarize this context briefly, capturing key points."
     );
-    assert_eq!(loaded.compaction_threshold, 128000);
+    assert_eq!(
+        loaded.compaction_threshold,
+        AppConfig::default().compaction_threshold
+    );
 
     let _ = fs::remove_file(config_path);
 }

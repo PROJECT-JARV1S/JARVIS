@@ -1,9 +1,14 @@
+use agent_rs_lib::agent::permission::PermissionResult;
 use jarvis_lib::domain::permission::PermissionResponse;
 use jarvis_lib::infrastructure::database::{create_pool, run_migrations, PermissionRepository};
-use jarvis_lib::infrastructure::permission_gate::extract_path_from_description;
+use jarvis_lib::infrastructure::permission_gate::{
+    derive_scope_from_description, extract_path_from_description, handle_permission_response,
+    PrefCache,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 
 fn unique_db_path(suffix: &str) -> std::path::PathBuf {
     let id = uuid::Uuid::new_v4();
@@ -308,4 +313,227 @@ async fn extract_path_sandbox_description_matches_prefix() {
     })
     .await
     .expect("timeout");
+}
+
+// ── derive_scope_from_description ──────────────────────────────────
+
+#[test]
+fn derive_scope_file_context_returns_parent_dir() {
+    let result = derive_scope_from_description("Wants to write file at /home/user/docs/foo.txt");
+    assert_eq!(result.as_deref(), Some("/home/user/docs"));
+}
+
+#[test]
+fn derive_scope_dir_context_returns_path_directly() {
+    let result = derive_scope_from_description("Wants to list directory /var/log");
+    assert_eq!(result.as_deref(), Some("/var/log"));
+}
+
+#[test]
+fn derive_scope_search_in_dir_context() {
+    let result = derive_scope_from_description("Wants to search files in /project/src");
+    assert_eq!(result.as_deref(), Some("/project/src"));
+}
+
+#[test]
+fn derive_scope_grep_in_dir_context() {
+    let result = derive_scope_from_description("Wants to grep files in /src");
+    assert_eq!(result.as_deref(), Some("/src"));
+}
+
+#[test]
+fn derive_scope_file_at_root_falls_back_to_slash() {
+    let result = derive_scope_from_description("Wants to write file at /foo.txt");
+    assert_eq!(result.as_deref(), Some("/"));
+}
+
+#[test]
+fn derive_scope_no_path_returns_none() {
+    let result = derive_scope_from_description("Custom tool");
+    assert!(result.is_none());
+}
+
+#[test]
+fn derive_scope_empty_description_returns_none() {
+    let result = derive_scope_from_description("");
+    assert!(result.is_none());
+}
+
+// ── always_allow_scopes_to_extracted_path ──────────────────────────
+
+#[tokio::test]
+async fn always_allow_scopes_to_extracted_path() {
+    let (repo, path) = setup_repo("scope_extract").await;
+    tokio::time::timeout(Duration::from_millis(500), async {
+        let scope = derive_scope_from_description("Wants to write file at /home/user/docs/foo.txt");
+        assert_eq!(scope.as_deref(), Some("/home/user/docs"));
+
+        repo.set_preference("write_document", Some("/home/user/docs"), "allow")
+            .await
+            .unwrap();
+
+        let pref = repo
+            .get_preference("write_document", Some("/home/user/docs"))
+            .await
+            .unwrap();
+        assert_eq!(pref.as_deref(), Some("allow"));
+    })
+    .await
+    .expect("timeout");
+    cleanup(&path);
+}
+
+// ── always_allow_no_path_skips_persistence ─────────────────────────
+
+#[tokio::test]
+async fn always_allow_no_path_skips_persistence() {
+    let (repo, path) = setup_repo("no_path_skip").await;
+    tokio::time::timeout(Duration::from_millis(500), async {
+        let scope = derive_scope_from_description("Custom tool");
+        assert!(scope.is_none());
+
+        let prefs = repo.list_preferences().await.unwrap();
+        assert!(
+            prefs.iter().all(|p| p.tool_name != "custom_tool"),
+            "no preference should be persisted for a tool with no derivable scope"
+        );
+    })
+    .await
+    .expect("timeout");
+    cleanup(&path);
+}
+
+// ── always_allow_precedence_global_still_works ────────────────────
+
+#[tokio::test]
+async fn always_allow_precedence_global_still_works() {
+    let (repo, path) = setup_repo("global_precedence").await;
+    tokio::time::timeout(Duration::from_millis(500), async {
+        repo.set_preference("write_document", None, "allow")
+            .await
+            .unwrap();
+
+        let pref = repo.get_preference("write_document", None).await.unwrap();
+        assert_eq!(pref.as_deref(), Some("allow"));
+    })
+    .await
+    .expect("timeout");
+    cleanup(&path);
+}
+
+// ── handle_permission_response integration tests ─────────────────────
+
+#[tokio::test]
+async fn handle_allow_always_derives_scope_and_persists() {
+    let (repo, path) = setup_repo("handle_allow_always").await;
+    let cache: Mutex<PrefCache> = Mutex::new(HashMap::new());
+    let response: Result<Result<PermissionResponse, tokio::sync::oneshot::error::RecvError>, tokio::time::error::Elapsed> =
+        Ok(Ok(PermissionResponse::AllowAlways { path: None }));
+
+    let result = tokio::time::timeout(Duration::from_secs(60), async {
+        handle_permission_response(
+            &repo,
+            &cache,
+            "write_document",
+            "Wants to write file at /home/user/docs/foo.txt",
+            response,
+            Duration::from_secs(60),
+        )
+        .await
+    })
+    .await
+    .expect("timeout");
+
+    assert!(matches!(result, PermissionResult::Allow));
+
+    let pref = repo
+        .get_preference("write_document", Some("/home/user/docs"))
+        .await
+        .unwrap();
+    assert_eq!(pref.as_deref(), Some("allow"));
+
+    let cache = cache.lock().await;
+    let entries = cache.get("write_document").unwrap();
+    let entry = entries.iter().find(|e| e.path_pattern.as_deref() == Some("/home/user/docs")).unwrap();
+    assert_eq!(entry.decision, "allow");
+
+    drop(cache);
+    cleanup(&path);
+}
+
+#[tokio::test]
+async fn handle_allow_always_no_path_skips_persistence() {
+    let (repo, path) = setup_repo("handle_allow_always_no_path").await;
+    let cache: Mutex<PrefCache> = Mutex::new(HashMap::new());
+    let response: Result<Result<PermissionResponse, tokio::sync::oneshot::error::RecvError>, tokio::time::error::Elapsed> =
+        Ok(Ok(PermissionResponse::AllowAlways { path: None }));
+
+    let result = tokio::time::timeout(Duration::from_secs(60), async {
+        handle_permission_response(
+            &repo,
+            &cache,
+            "custom_tool",
+            "Custom tool",
+            response,
+            Duration::from_secs(60),
+        )
+        .await
+    })
+    .await
+    .expect("timeout");
+
+    assert!(matches!(result, PermissionResult::Allow));
+
+    let prefs = repo.list_preferences().await.unwrap();
+    assert!(
+        prefs.iter().all(|p| p.tool_name != "custom_tool"),
+        "no preference should be persisted when description yields no path"
+    );
+
+    let cache = cache.lock().await;
+    assert!(
+        !cache.contains_key("custom_tool"),
+        "cache should have no entry for custom_tool"
+    );
+
+    drop(cache);
+    cleanup(&path);
+}
+
+#[tokio::test]
+async fn handle_deny_always_derives_scope_and_persists() {
+    let (repo, path) = setup_repo("handle_deny_always").await;
+    let cache: Mutex<PrefCache> = Mutex::new(HashMap::new());
+    let response: Result<Result<PermissionResponse, tokio::sync::oneshot::error::RecvError>, tokio::time::error::Elapsed> =
+        Ok(Ok(PermissionResponse::DenyAlways { path: None }));
+
+    let result = tokio::time::timeout(Duration::from_secs(60), async {
+        handle_permission_response(
+            &repo,
+            &cache,
+            "read_file",
+            "Wants to read file at /etc/passwd",
+            response,
+            Duration::from_secs(60),
+        )
+        .await
+    })
+    .await
+    .expect("timeout");
+
+    assert!(matches!(result, PermissionResult::Deny { .. }));
+
+    let pref = repo
+        .get_preference("read_file", Some("/etc"))
+        .await
+        .unwrap();
+    assert_eq!(pref.as_deref(), Some("deny"));
+
+    let cache = cache.lock().await;
+    let entries = cache.get("read_file").unwrap();
+    let entry = entries.iter().find(|e| e.path_pattern.as_deref() == Some("/etc")).unwrap();
+    assert_eq!(entry.decision, "deny");
+
+    drop(cache);
+    cleanup(&path);
 }

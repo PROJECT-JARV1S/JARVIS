@@ -24,6 +24,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   database_name: 'jarvis.db',
   mcp_config_path: 'mcp.json',
   sandbox_dir: '.',
+  sandbox_roots: [],
   read_extensions: ['txt', 'md', 'pdf', 'json', 'toml', 'rs', 'js', 'ts', 'tsx', 'html', 'css'],
   write_extensions: ['txt', 'md', 'json', 'toml', 'rs', 'js', 'ts', 'tsx', 'html', 'css'],
 };

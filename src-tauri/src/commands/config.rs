@@ -74,5 +74,7 @@ pub async fn update_config(
         .save_to(&config_path)
         .map_err(|e| AppError::SystemError(format!("Failed to save config: {}", e)))?;
 
+    crate::infrastructure::agent::sandbox::sync_sandbox_roots(&new_config)?;
+
     Ok(())
 }

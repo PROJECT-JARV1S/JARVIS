@@ -14,5 +14,6 @@ pub mod config;
 pub mod documents;
 pub mod hardware;
 pub mod permission;
+pub mod sandbox;
 pub mod system;
 pub mod voice;

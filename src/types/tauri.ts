@@ -61,6 +61,7 @@ export interface AppConfig {
   compaction_threshold: number;
   mcp_config_path: string;
   sandbox_dir: string;
+  sandbox_roots: string[];
   read_extensions: string[];
   write_extensions: string[];
 }

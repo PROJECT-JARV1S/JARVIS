@@ -22,6 +22,7 @@ fn test_config() -> AppConfig {
         compaction_prompt: "Compact.".to_string(),
         compaction_threshold: 100,
         sandbox_dir: ".".to_string(),
+        sandbox_roots: vec![],
         read_extensions: read_exts,
         write_extensions: write_exts,
     }

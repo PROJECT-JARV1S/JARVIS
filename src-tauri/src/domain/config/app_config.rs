@@ -47,6 +47,10 @@ pub struct AppConfig {
     /// Root directory for sandboxed file read/write operations.
     #[serde(default = "default_sandbox_dir")]
     pub sandbox_dir: String,
+    /// Additional directories the agent may read/write without prompting.
+    /// `sandbox_dir` is always the primary root (index 0).
+    #[serde(default)]
+    pub sandbox_roots: Vec<String>,
     /// File extensions the agent is allowed to read.
     #[serde(default = "default_read_extensions")]
     pub read_extensions: HashSet<String>,
@@ -71,6 +75,7 @@ impl Default for AppConfig {
             compaction_prompt: default_compaction_prompt(),
             compaction_threshold: default_compaction_threshold(),
             sandbox_dir: default_sandbox_dir(),
+            sandbox_roots: Vec::new(),
             read_extensions: default_read_extensions(),
             write_extensions: default_write_extensions(),
         }

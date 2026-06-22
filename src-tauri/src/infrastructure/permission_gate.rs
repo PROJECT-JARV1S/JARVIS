@@ -16,11 +16,11 @@ const DEFAULT_TIMEOUT_SECS: u64 = 60;
 /// In-memory cache of persisted permission preferences.
 /// Key: tool_name (e.g. "write_document"). Value: all persisted entries for that tool.
 #[derive(Clone)]
-struct PrefEntry {
-    path_pattern: Option<String>,
-    decision: String,
+pub struct PrefEntry {
+    pub path_pattern: Option<String>,
+    pub decision: String,
 }
-type PrefCache = HashMap<String, Vec<PrefEntry>>;
+pub type PrefCache = HashMap<String, Vec<PrefEntry>>;
 
 /// Pending permission requests awaiting a frontend response.
 /// Key: request_id (UUID). Value: oneshot sender.
@@ -182,6 +182,7 @@ impl PermissionGate for AppPermissionGate {
         {
             let mut pending = self.pending.lock().await;
             pending.remove(&request_id);
+            tracing::error!(request_id = %request_id, "Failed to emit permission-required event to frontend");
             return PermissionResult::Deny {
                 reason: "Failed to emit permission request to frontend".to_string(),
             };
@@ -194,61 +195,94 @@ impl PermissionGate for AppPermissionGate {
             pending.remove(&request_id);
         }
 
-        match response {
-            Ok(Ok(PermissionResponse::Allow)) => PermissionResult::Allow,
-            Ok(Ok(PermissionResponse::Deny { reason })) => PermissionResult::Deny { reason },
-            Ok(Ok(PermissionResponse::AllowAlways { path })) => {
-                if let Err(e) = self
-                    .prefs_repo
-                    .set_preference(tool_name, path.as_deref(), "allow")
-                    .await
-                {
+        handle_permission_response(
+            &self.prefs_repo,
+            &self.prefs,
+            tool_name,
+            description,
+            response,
+            self.timeout,
+        )
+        .await
+    }
+}
+
+pub async fn handle_permission_response(
+    repo: &PermissionRepository,
+    prefs: &Mutex<PrefCache>,
+    tool_name: &str,
+    description: &str,
+    response: Result<Result<PermissionResponse, oneshot::error::RecvError>, tokio::time::error::Elapsed>,
+    timeout: Duration,
+) -> PermissionResult {
+    match response {
+        Ok(Ok(PermissionResponse::Allow)) => PermissionResult::Allow,
+        Ok(Ok(PermissionResponse::Deny { reason })) => PermissionResult::Deny { reason },
+        Ok(Ok(PermissionResponse::AllowAlways { path })) => {
+            let scope = path.or_else(|| derive_scope_from_description(description));
+            if let Some(s) = scope {
+                if let Err(e) = repo.set_preference(tool_name, Some(&s), "allow").await {
                     tracing::warn!(error = %e, "failed to persist allow-always preference");
                 }
-                let mut prefs = self.prefs.lock().await;
+                let mut prefs = prefs.lock().await;
                 let entries = prefs.entry(tool_name.to_string()).or_default();
-                if let Some(existing) = entries.iter_mut().find(|e| e.path_pattern == path) {
+                if let Some(existing) = entries
+                    .iter_mut()
+                    .find(|e| e.path_pattern.as_ref() == Some(&s))
+                {
                     existing.decision = "allow".to_string();
                 } else {
                     entries.push(PrefEntry {
-                        path_pattern: path,
+                        path_pattern: Some(s),
                         decision: "allow".to_string(),
                     });
                 }
-                PermissionResult::Allow
+            } else {
+                tracing::debug!(
+                    tool_name,
+                    "Skipping Always-Allow persistence: no path derivable from description"
+                );
             }
-            Ok(Ok(PermissionResponse::DenyAlways { path })) => {
-                if let Err(e) = self
-                    .prefs_repo
-                    .set_preference(tool_name, path.as_deref(), "deny")
-                    .await
-                {
+            PermissionResult::Allow
+        }
+        Ok(Ok(PermissionResponse::DenyAlways { path })) => {
+            let scope = path.or_else(|| derive_scope_from_description(description));
+            if let Some(s) = scope {
+                if let Err(e) = repo.set_preference(tool_name, Some(&s), "deny").await {
                     tracing::warn!(error = %e, "failed to persist deny-always preference");
                 }
-                let mut prefs = self.prefs.lock().await;
+                let mut prefs = prefs.lock().await;
                 let entries = prefs.entry(tool_name.to_string()).or_default();
-                if let Some(existing) = entries.iter_mut().find(|e| e.path_pattern == path) {
+                if let Some(existing) = entries
+                    .iter_mut()
+                    .find(|e| e.path_pattern.as_ref() == Some(&s))
+                {
                     existing.decision = "deny".to_string();
                 } else {
                     entries.push(PrefEntry {
-                        path_pattern: path,
+                        path_pattern: Some(s),
                         decision: "deny".to_string(),
                     });
                 }
-                PermissionResult::Deny {
-                    reason: format!("Tool '{}' is permanently denied by user", tool_name),
-                }
+            } else {
+                tracing::debug!(
+                    tool_name,
+                    "Skipping Always-Deny persistence: no path derivable from description"
+                );
             }
-            Ok(Err(_)) => PermissionResult::Deny {
-                reason: "Permission request channel was cancelled".to_string(),
-            },
-            Err(_) => PermissionResult::Deny {
-                reason: format!(
-                    "Permission request timed out after {}s",
-                    self.timeout.as_secs()
-                ),
-            },
+            PermissionResult::Deny {
+                reason: format!("Tool '{}' is permanently denied by user", tool_name),
+            }
         }
+        Ok(Err(_)) => PermissionResult::Deny {
+            reason: "Permission request channel was cancelled".to_string(),
+        },
+        Err(_) => PermissionResult::Deny {
+            reason: format!(
+                "Permission request timed out after {}s",
+                timeout.as_secs()
+            ),
+        },
     }
 }
 
@@ -271,6 +305,30 @@ pub fn extract_path_from_description(description: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Derives a directory scope from a tool description for persistent permission decisions.
+///
+/// For directory-context tools (`Wants to list directory`, `Wants to search files in`,
+/// `Wants to grep files in`), returns the extracted path directly.
+/// For file-context tools (`Wants to write file at`, `Wants to read file at`),
+/// returns the parent directory (everything up to the last `/`). Falls back to `"/"`.
+/// If no path can be extracted, returns `None` — callers should skip persistence.
+pub fn derive_scope_from_description(description: &str) -> Option<String> {
+    let path = extract_path_from_description(description)?;
+
+    let is_dir_context = description.starts_with("Wants to list directory ")
+        || description.starts_with("Wants to search files in ")
+        || description.starts_with("Wants to grep files in ");
+
+    if is_dir_context {
+        Some(path)
+    } else {
+        match path.rfind('/') {
+            Some(pos) if pos > 0 => Some(path[..pos].to_string()),
+            _ => Some("/".to_string()),
+        }
+    }
 }
 
 /// Normalizes a path for prefix comparison: ensures it ends with `/`.

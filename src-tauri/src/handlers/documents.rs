@@ -22,7 +22,10 @@ pub async fn read_document(
                 g as Arc<dyn agent_rs_lib::agent::permission::PermissionGate + Send + Sync>,
             )
         })
-        .unwrap_or_else(|| PermissionPolicy::AllowAll);
+        .unwrap_or_else(|| {
+            tracing::error!("AppPermissionGate not found in managed state for read_document — denying access");
+            PermissionPolicy::DenyAll
+        });
     let tool = ReadDocumentTool::new(sandbox, allowed_extensions, policy);
     let args = serde_json::json!({ "path": path }).to_string();
     tool.call(args)
@@ -45,7 +48,10 @@ pub async fn write_document(
                 g as Arc<dyn agent_rs_lib::agent::permission::PermissionGate + Send + Sync>,
             )
         })
-        .unwrap_or_else(|| PermissionPolicy::AllowAll);
+        .unwrap_or_else(|| {
+            tracing::error!("AppPermissionGate not found in managed state for write_document — denying access");
+            PermissionPolicy::DenyAll
+        });
     let tool = WriteDocumentTool::new(sandbox, allowed_extensions, policy);
     let mut args = serde_json::json!({ "path": path, "content": content });
     if let Some(append) = append {
@@ -68,7 +74,10 @@ pub async fn list_directory(
                 g as Arc<dyn agent_rs_lib::agent::permission::PermissionGate + Send + Sync>,
             )
         })
-        .unwrap_or_else(|| PermissionPolicy::AllowAll);
+        .unwrap_or_else(|| {
+            tracing::error!("AppPermissionGate not found in managed state for list_directory — denying access");
+            PermissionPolicy::DenyAll
+        });
     let tool = ListDirectoryTool::new(sandbox, policy);
     let args = match path {
         Some(p) => serde_json::json!({ "path": p }).to_string(),
@@ -91,7 +100,10 @@ pub async fn glob_search(
                 g as Arc<dyn agent_rs_lib::agent::permission::PermissionGate + Send + Sync>,
             )
         })
-        .unwrap_or_else(|| PermissionPolicy::AllowAll);
+        .unwrap_or_else(|| {
+            tracing::error!("AppPermissionGate not found in managed state for glob_search — denying access");
+            PermissionPolicy::DenyAll
+        });
     let tool = GlobSearchTool::new(sandbox, policy);
     let args = serde_json::json!({ "pattern": pattern }).to_string();
     tool.call(args)
@@ -114,7 +126,10 @@ pub async fn grep_search(
                 g as Arc<dyn agent_rs_lib::agent::permission::PermissionGate + Send + Sync>,
             )
         })
-        .unwrap_or_else(|| PermissionPolicy::AllowAll);
+        .unwrap_or_else(|| {
+            tracing::error!("AppPermissionGate not found in managed state for grep_search — denying access");
+            PermissionPolicy::DenyAll
+        });
     let tool = GrepSearchTool::new(sandbox, allowed_extensions, policy);
     let mut args = serde_json::json!({ "query": query });
     if let Some(path) = path {

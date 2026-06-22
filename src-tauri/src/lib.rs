@@ -9,6 +9,7 @@ use crate::commands::config::*;
 use crate::commands::documents::*;
 use crate::commands::hardware::*;
 use crate::commands::permission::*;
+use crate::commands::sandbox::*;
 use crate::commands::system::*;
 use crate::commands::voice::*;
 use crate::infrastructure::database::PermissionRepository;
@@ -192,6 +193,10 @@ pub fn run() {
             get_permission_preferences,
             set_permission_preference,
             delete_permission_preference,
+            // Sandbox
+            add_sandbox_root,
+            remove_sandbox_root,
+            list_sandbox_roots,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -83,26 +83,23 @@ export function PermissionPromptOverlay() {
                     Deny
                   </button>
                   {dir ? (
-                    <button
-                      onClick={() => respond(req.request_id, { kind: 'allow_always', path: dir })}
-                      className="col-span-2 px-3 py-1.5 bg-green-700/70 hover:bg-green-600/70 text-white text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer truncate"
-                      title={dir}
-                    >
-                      Always allow in this directory
-                    </button>
+                    <>
+                      <button
+                        onClick={() => respond(req.request_id, { kind: 'allow_always', path: dir })}
+                        className="col-span-2 px-3 py-1.5 bg-green-700/70 hover:bg-green-600/70 text-white text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer truncate"
+                        title={dir}
+                      >
+                        Always allow in this directory
+                      </button>
+                      <button
+                        onClick={() => respond(req.request_id, { kind: 'deny_always', path: dir })}
+                        className="col-span-2 px-3 py-1.5 bg-red-700/70 hover:bg-red-600/70 text-white text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer truncate"
+                        title={dir}
+                      >
+                        Always deny in this directory
+                      </button>
+                    </>
                   ) : null}
-                  <button
-                    onClick={() => respond(req.request_id, { kind: 'allow_always' })}
-                    className="px-3 py-1.5 bg-green-900/60 hover:bg-green-800/60 text-white/90 text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
-                  >
-                    Always Allow
-                  </button>
-                  <button
-                    onClick={() => respond(req.request_id, { kind: 'deny_always' })}
-                    className="px-3 py-1.5 bg-red-900/60 hover:bg-red-800/60 text-white/90 text-[11px] font-mono font-semibold rounded transition-colors cursor-pointer"
-                  >
-                    Always Deny
-                  </button>
                 </div>
               );
             })()}

@@ -20,9 +20,13 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
         if (prev.some((r) => r.request_id === request.request_id)) return prev;
         return [...prev, request];
       });
-    }).then((unlisten) => {
-      unlistenRef.current = unlisten;
-    });
+    })
+      .then((unlisten) => {
+        unlistenRef.current = unlisten;
+      })
+      .catch((err) => {
+        console.error('[PermissionProvider] Failed to register permission-required listener:', err);
+      });
     return () => {
       unlistenRef.current?.();
     };

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, FolderPlus, Trash2 } from 'lucide-react';
 import { AppConfig } from '@/services/configService';
 import { restartAgent, onAgentStatus } from '@/services/agentService';
+import { addSandboxRoot, removeSandboxRoot } from '@/services/sandboxService';
 import { SectionHeader, FieldGroup } from '../components/FieldGroup';
+import { open } from '@tauri-apps/plugin-dialog';
 
 interface TabProps {
   config: AppConfig;
@@ -148,8 +150,8 @@ export const SystemTab = ({ config, updateConfig }: TabProps) => {
         />
       </FieldGroup>
 
-      {/* Sandbox Directory */}
-      <FieldGroup label="Sandbox Directory" description="Root directory for document reading/writing operations.">
+      {/* Primary Sandbox Directory */}
+      <FieldGroup label="Primary Sandbox Directory" description="Default sandbox root. The agent can always read/write here without prompting.">
         <input
           id="settings-sandbox-dir"
           type="text"
@@ -157,6 +159,60 @@ export const SystemTab = ({ config, updateConfig }: TabProps) => {
           onChange={(e) => updateConfig('sandbox_dir', e.target.value)}
           className="w-full bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 rounded-lg px-4 py-3 text-sm font-mono text-primary-txt focus:outline-none focus:border-[var(--theme-accent)]/50 focus:ring-1 focus:ring-[var(--theme-accent)]/30 transition-all duration-300 shadow-inner"
         />
+      </FieldGroup>
+
+      {/* Additional Sandbox Roots */}
+      <FieldGroup label="Additional Sandbox Roots" description="Extra directories the agent may access without prompting.">
+        <div className="space-y-2">
+          {config.sandbox_roots.map((root) => (
+            <div key={root} className="flex items-center gap-2">
+              <span className="flex-1 px-3 py-2 bg-white/[0.02] border border-white/10 rounded-lg text-xs font-mono text-primary-txt truncate">
+                {root}
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await removeSandboxRoot(root);
+                    updateConfig('sandbox_roots', config.sandbox_roots.filter((r) => r !== root));
+                  } catch (err) {
+                    console.error('[SystemTab] Failed to remove sandbox root:', err);
+                  }
+                }}
+                className="p-2 text-secondary-txt hover:text-error-red transition-colors"
+                title="Remove root"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+          {config.sandbox_roots.length === 0 && (
+            <p className="text-xs text-tertiary-txt/70 py-2">
+              No additional sandbox roots. The agent can only read/write inside the primary sandbox directory.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const selected = await open({ directory: true, multiple: false, title: 'Select sandbox root' });
+                if (selected) {
+                  const path = Array.isArray(selected) ? selected[0] : selected;
+                  await addSandboxRoot(path);
+                  if (!config.sandbox_roots.includes(path)) {
+                    updateConfig('sandbox_roots', [...config.sandbox_roots, path]);
+                  }
+                }
+              } catch (err) {
+                console.error('[SystemTab] Failed to add sandbox root:', err);
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-xs font-mono text-secondary-txt hover:text-[var(--theme-accent)] border border-white/10 hover:border-[var(--theme-accent)]/30 rounded-lg transition-all"
+          >
+            <FolderPlus size={14} />
+            Add directory
+          </button>
+        </div>
       </FieldGroup>
 
       {/* Restart Agent */}

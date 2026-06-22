@@ -27,7 +27,8 @@ pub(crate) async fn build_agent(
     let ask_user: PermissionPolicy = if let Some(g) = gate {
         PermissionPolicy::Custom(g)
     } else {
-        PermissionPolicy::AllowAll
+        tracing::error!("AppPermissionGate not found in managed state — denying all tool permissions");
+        PermissionPolicy::DenyAll
     };
     let sandbox = get_or_init_shared_sandbox(config);
     let read_exts = config.read_extensions.clone();

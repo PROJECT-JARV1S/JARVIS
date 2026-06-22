@@ -105,9 +105,10 @@ fn run_migrations_called_twice_does_not_fail() {
             r.get(0)
         })
         .unwrap();
-    // Two embedded migrations exist (0001_initial_schema + permission_preferences);
-    // calling run_migrations twice must not create duplicates.
-    assert_eq!(count, 3);
+    // Four embedded migrations exist (initial_schema, session_messages_normalized,
+    // permission_preferences, add_path_pattern); calling run_migrations twice
+    // must not create duplicates.
+    assert_eq!(count, 4);
     drop(conn);
 
     let _ = fs::remove_file(&path);
